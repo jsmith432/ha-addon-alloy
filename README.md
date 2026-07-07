@@ -2,6 +2,8 @@
 
 Ship Home Assistant OS logs to [Grafana Loki](https://grafana.com/oss/loki/) using [Grafana Alloy](https://grafana.com/docs/alloy/latest/) — the modern replacement for the deprecated Promtail add-on.
 
+Maintained fork of [ecohash-co/ha-addon-alloy](https://github.com/ecohash-co/ha-addon-alloy) with usage reporting disabled, newer Alloy, whitespace-hardened config, and the `journal_priority_as_level` / `parse_ha_log_level` options.
+
 ## Why?
 
 The official Promtail add-on (v2.2.0) bundles Promtail 2.6.1, which cannot read the compact journal format introduced in systemd 252+ (HAOS 11+). This means **Promtail silently fails to ship logs on modern HAOS installations**.
@@ -12,7 +14,7 @@ Grafana Alloy is the official successor to Promtail, Grafana Agent, and Grafana 
 
 1. Open **Settings** > **Add-ons** > **Add-on Store**
 2. Click the overflow menu (three dots, top-right) > **Repositories**
-3. Paste: `https://github.com/ecohash-co/ha-addon-alloy`
+3. Paste: `https://github.com/jsmith432/ha-addon-alloy`
 4. Click **Add** > **Close**
 5. Find **Grafana Alloy** in the store and click **Install**
 
