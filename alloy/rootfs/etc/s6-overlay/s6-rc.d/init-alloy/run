@@ -9,6 +9,9 @@ mkdir -p "${CONFIG_DIR}" /data/alloy
 
 # Read options
 LOKI_URL=$(jq -r '.loki_url' "${OPTIONS_FILE}")
+# Trim surrounding whitespace — easy to paste into the HA options UI and
+# otherwise crash-loops Alloy with a cryptic URL parse error.
+LOKI_URL=$(printf '%s' "${LOKI_URL}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 LOG_LEVEL=$(jq -r '.log_level // "info"' "${OPTIONS_FILE}")
 JOURNAL_PRIORITY_AS_LEVEL=$(jq -r '.journal_priority_as_level | if . == null then true else . end' "${OPTIONS_FILE}")
 PARSE_HA_LOG_LEVEL=$(jq -r '.parse_ha_log_level // false' "${OPTIONS_FILE}")

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1 - 2026-07-07
+
+### Fixed
+- Trim leading/trailing whitespace from `loki_url` before rendering the
+  config. A pasted leading space previously crash-looped Alloy with
+  `first path segment in URL cannot contain colon`.
+
 ## 1.1.0 - 2026-07-07
 
 ### Added
