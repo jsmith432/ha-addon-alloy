@@ -10,7 +10,42 @@ mkdir -p "${CONFIG_DIR}" /data/alloy
 # Read options
 LOKI_URL=$(jq -r '.loki_url' "${OPTIONS_FILE}")
 LOG_LEVEL=$(jq -r '.log_level // "info"' "${OPTIONS_FILE}")
+JOURNAL_PRIORITY_AS_LEVEL=$(jq -r '.journal_priority_as_level | if . == null then true else . end' "${OPTIONS_FILE}")
+PARSE_HA_LOG_LEVEL=$(jq -r '.parse_ha_log_level // false' "${OPTIONS_FILE}")
 ADDITIONAL_CONFIG=$(jq -r '.additional_config // ""' "${OPTIONS_FILE}")
+
+# Optional journal-priority -> level relabel rule. Docker's journald
+# driver assigns a fixed priority per stream (stdout=info, stderr=err),
+# so for container logs this label reflects the stream, not the real
+# level. Disable to leave the level to content-based detection.
+if [ "${JOURNAL_PRIORITY_AS_LEVEL}" = "true" ]; then
+    LEVEL_RULE='  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }'
+else
+    LEVEL_RULE=""
+fi
+
+# Optional pipeline stages extracting the Python application log level
+# from HA Core / Supervisor lines into an ha_level label. Scoped via
+# stage.match so other journal streams are unaffected.
+HA_LEVEL_STAGES=''
+if [ "${PARSE_HA_LOG_LEVEL}" = "true" ]; then
+    HA_LEVEL_STAGES='
+  stage.match {
+    selector = "{container_name=~\"homeassistant|hassio_supervisor\"}"
+
+    stage.regex {
+      expression = "\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}[.,]\\d+\\s+(?P<ha_level>DEBUG|INFO|WARNING|ERROR|CRITICAL)"
+    }
+
+    stage.labels {
+      values = { ha_level = "" }
+    }
+  }
+'
+fi
 
 # Detect journal path
 JOURNAL_PATH="/var/log/journal"
@@ -23,6 +58,8 @@ echo " Grafana Alloy for Home Assistant"
 echo " Loki URL: ${LOKI_URL}"
 echo " Journal path: ${JOURNAL_PATH}"
 echo " Log level: ${LOG_LEVEL}"
+echo " Journal priority as level: ${JOURNAL_PRIORITY_AS_LEVEL}"
+echo " Parse HA log level: ${PARSE_HA_LOG_LEVEL}"
 echo "-----------------------------------------------------------"
 
 # Generate Alloy config
@@ -68,10 +105,7 @@ loki.relabel "journal" {
     source_labels = ["__journal_container_name"]
     target_label  = "container_name"
   }
-  rule {
-    source_labels = ["__journal_priority_keyword"]
-    target_label  = "level"
-  }
+${LEVEL_RULE}
 }
 
 // --- Process journal logs ---
@@ -79,7 +113,7 @@ loki.process "journal" {
   stage.drop {
     expression = "^\\\\s*$"
   }
-
+${HA_LEVEL_STAGES}
   forward_to = [loki.write.loki.receiver]
 }
 

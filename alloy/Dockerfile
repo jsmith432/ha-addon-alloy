@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ARG BUILD_ARCH
 RUN set -eux; \
-    ALLOY_VERSION="1.13.1"; \
+    ALLOY_VERSION="1.17.1"; \
     case "${BUILD_ARCH}" in \
         amd64)  ARCH="linux-amd64" ;; \
         aarch64) ARCH="linux-arm64" ;; \

@@ -1,5 +1,5 @@
 name: Grafana Alloy
-version: "1.0.1"
+version: "1.1.0"
 slug: alloy
 description: >-
   Ship Home Assistant logs to Loki using Grafana Alloy.
@@ -25,9 +25,13 @@ watchdog: "http://[HOST]:[PORT:12345]/-/ready"
 options:
   loki_url: "http://localhost:3100/loki/api/v1/push"
   log_level: info
+  journal_priority_as_level: true
+  parse_ha_log_level: false
 schema:
   loki_url: url
   log_level: "list(debug|info|warn|error)"
+  journal_priority_as_level: "bool?"
+  parse_ha_log_level: "bool?"
   additional_config: "str?"
 stage: experimental
 apparmor: false
