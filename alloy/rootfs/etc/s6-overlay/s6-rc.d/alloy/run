@@ -2,4 +2,5 @@
 exec /usr/bin/alloy run \
     --server.http.listen-addr=0.0.0.0:12345 \
     --storage.path=/data/alloy \
+    --disable-reporting \
     /etc/alloy/config.alloy

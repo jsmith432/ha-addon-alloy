@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 - 2026-07-07
+
+### Changed
+- Pass `--disable-reporting` to `alloy run` to disable anonymous usage
+  reporting. This also stops the constant "failed to send usage report" log
+  spam on networks where stats.grafana.org is unreachable or DNS-blocked.
+
 ## 1.0.0 - 2026-02-21
 
 ### Added
