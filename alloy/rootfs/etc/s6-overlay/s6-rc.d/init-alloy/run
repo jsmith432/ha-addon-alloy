@@ -39,21 +39,9 @@ fi
 APP_LEVEL_STAGES=''
 if [ "${PARSE_APP_LOG_LEVEL}" = "true" ]; then
     APP_LEVEL_STAGES='
-  stage.match {
-    selector = "{job=\"systemd-journal\"} |~ \"(?:^|[\\s,])level[=:]\\\\\"?(trace|debug|info|warn|warning|error|fatal|panic|TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL|PANIC)\\\\\"?(?:[\\s,]|$)\""
-
-    stage.regex {
-      expression = "(?:^|[\\s,])level[=:]\\\"?(?P<level>trace|debug|info|warn|warning|error|fatal|panic|TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL|PANIC)\\\"?(?:[\\s,]|$)"
-    }
-
-    stage.template {
-      source   = "level"
-      template = "{{ ToLower .Value }}"
-    }
-
-    stage.labels {
-      values = { level = "" }
-    }
+  stage.regex {
+    expression          = "(?:^|[\\s,])level[=:]\\\"?(?P<level>trace|debug|info|warn|warning|error|fatal|panic)\\\"?(?:[\\s,]|$)"
+    labels_from_groups = true
   }
 '
 fi

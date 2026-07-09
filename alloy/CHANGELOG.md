@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.3 - 2026-07-08
+
+### Fixed
+- Replace the `parse_app_log_level` guarded `stage.match` selector with a plain
+  `stage.regex` using `labels_from_groups = true`. This avoids Alloy selector
+  escaping failures while still only overriding `level` when an embedded
+  lowercase application severity is present.
+
 ## 1.1.2 - 2026-07-08
 
 ### Added

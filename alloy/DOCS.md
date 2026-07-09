@@ -14,7 +14,7 @@ This add-on replaces the deprecated Promtail add-on, which is incompatible with 
 
 - **log_level**: Alloy log verbosity (`debug`, `info`, `warn`, `error`). Default: `info`
 - **journal_priority_as_level**: Set the `level` label from the systemd journal priority keyword. Default: `true`. Docker's journald driver assigns a fixed priority per stream (`info` for stdout, `err` for stderr), so for container logs this label can reflect the stream rather than the real application level. When `parse_app_log_level` is enabled, an explicit level embedded in the log line overrides this fallback.
-- **parse_app_log_level**: Extract common embedded application severities such as `level=info`, `level=warn`, or `level:error` into the `level` label. Default: `true`. This fixes add-ons that write normal info logs to stderr, such as CrowdSec LAPI access logs.
+- **parse_app_log_level**: Extract common embedded lowercase application severities such as `level=info`, `level=warn`, or `level:error` into the `level` label. Default: `true`. This fixes add-ons that write normal info logs to stderr, such as CrowdSec LAPI access logs. Lines without an embedded level keep the journald-priority fallback label when `journal_priority_as_level` is enabled.
 - **parse_ha_log_level**: Extract the Python application log level (`DEBUG`/`INFO`/`WARNING`/`ERROR`/`CRITICAL`) from Home Assistant Core and Supervisor log lines into an `ha_level` label. Default: `false`. Scoped so only those two containers are parsed; lines that don't match the standard HA log prefix simply get no `ha_level` label.
 - **additional_config**: Extra Alloy config blocks to append (advanced users)
 

@@ -30,11 +30,11 @@ parse_app_log_level: true
 parse_ha_log_level: false
 ```
 
-`parse_app_log_level` is enabled by default. It extracts embedded application
-severities such as `level=info` or `level:error` into the normalized `level`
-label, overriding Docker/journald stream priority when the application provides
-its own level. Journald priority remains useful as a fallback for messages that
-do not include an application-level severity.
+`parse_app_log_level` is enabled by default. It extracts embedded lowercase
+application severities such as `level=info` or `level:error` into the normalized
+`level` label, overriding Docker/journald stream priority when the application
+provides its own level. Journald priority remains useful as a fallback for
+messages that do not include an application-level severity.
 
 ## What gets shipped
 
