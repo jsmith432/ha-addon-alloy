@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.4 - 2026-07-08
+
+### Changed
+- `parse_ha_log_level` now sets both `ha_level` (`DEBUG`, `INFO`, etc.) and the
+  normalized lowercase `level` label (`debug`, `info`, etc.) for Home Assistant
+  Core and Supervisor logs. This lets HA's application-level severity override
+  Docker/journald stream priority, matching the behavior of
+  `parse_app_log_level` for `level=...` application logs.
+
+### Documentation
+- Expanded README and add-on documentation for every configuration toggle,
+  including when to enable/disable each log-level parser and how precedence
+  works between journald priority and application-provided severity.
+
 ## 1.1.3 - 2026-07-08
 
 ### Fixed

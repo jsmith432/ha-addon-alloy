@@ -46,21 +46,50 @@ if [ "${PARSE_APP_LOG_LEVEL}" = "true" ]; then
 '
 fi
 
-# Optional pipeline stages extracting the Python application log level
-# from HA Core / Supervisor lines into an ha_level label. Scoped via
-# stage.match so other journal streams are unaffected.
+# Optional pipeline stages extracting the Python application log level from HA
+# Core / Supervisor lines. These stages set both the original HA-style
+# `ha_level` label and the normalized lowercase `level` label so the application
+# severity overrides Docker/journald stream priority for HA's own logs too.
 HA_LEVEL_STAGES=''
 if [ "${PARSE_HA_LOG_LEVEL}" = "true" ]; then
     HA_LEVEL_STAGES='
   stage.match {
-    selector = "{container_name=~\"homeassistant|hassio_supervisor\"}"
+    selector = "{container_name=~\"homeassistant|hassio_supervisor\"} |= \" DEBUG \""
 
-    stage.regex {
-      expression = "\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}[.,]\\d+\\s+(?P<ha_level>DEBUG|INFO|WARNING|ERROR|CRITICAL)"
+    stage.static_labels {
+      values = { ha_level = "DEBUG", level = "debug" }
     }
+  }
 
-    stage.labels {
-      values = { ha_level = "" }
+  stage.match {
+    selector = "{container_name=~\"homeassistant|hassio_supervisor\"} |= \" INFO \""
+
+    stage.static_labels {
+      values = { ha_level = "INFO", level = "info" }
+    }
+  }
+
+  stage.match {
+    selector = "{container_name=~\"homeassistant|hassio_supervisor\"} |= \" WARNING \""
+
+    stage.static_labels {
+      values = { ha_level = "WARNING", level = "warning" }
+    }
+  }
+
+  stage.match {
+    selector = "{container_name=~\"homeassistant|hassio_supervisor\"} |= \" ERROR \""
+
+    stage.static_labels {
+      values = { ha_level = "ERROR", level = "error" }
+    }
+  }
+
+  stage.match {
+    selector = "{container_name=~\"homeassistant|hassio_supervisor\"} |= \" CRITICAL \""
+
+    stage.static_labels {
+      values = { ha_level = "CRITICAL", level = "critical" }
     }
   }
 '
