@@ -2,7 +2,7 @@
 
 Ship Home Assistant OS logs to [Grafana Loki](https://grafana.com/oss/loki/) using [Grafana Alloy](https://grafana.com/docs/alloy/latest/) — the modern replacement for the deprecated Promtail add-on.
 
-Maintained fork of [ecohash-co/ha-addon-alloy](https://github.com/ecohash-co/ha-addon-alloy) with usage reporting disabled, newer Alloy, whitespace-hardened config, and the `journal_priority_as_level` / `parse_ha_log_level` options.
+Maintained fork of [ecohash-co/ha-addon-alloy](https://github.com/ecohash-co/ha-addon-alloy) with usage reporting disabled, newer Alloy, whitespace-hardened config, and log-level normalization options.
 
 ## Why?
 
@@ -25,7 +25,16 @@ Set `loki_url` to your Loki push endpoint:
 ```yaml
 loki_url: "http://192.168.1.45:3100/loki/api/v1/push"
 log_level: info
+journal_priority_as_level: true
+parse_app_log_level: true
+parse_ha_log_level: false
 ```
+
+`parse_app_log_level` is enabled by default. It extracts embedded application
+severities such as `level=info` or `level:error` into the normalized `level`
+label, overriding Docker/journald stream priority when the application provides
+its own level. Journald priority remains useful as a fallback for messages that
+do not include an application-level severity.
 
 ## What gets shipped
 

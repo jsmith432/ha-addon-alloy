@@ -15,6 +15,7 @@ LOKI_URL=$(printf '%s' "${LOKI_URL}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space
 LOG_LEVEL=$(jq -r '.log_level // "info"' "${OPTIONS_FILE}")
 JOURNAL_PRIORITY_AS_LEVEL=$(jq -r '.journal_priority_as_level | if . == null then true else . end' "${OPTIONS_FILE}")
 PARSE_HA_LOG_LEVEL=$(jq -r '.parse_ha_log_level // false' "${OPTIONS_FILE}")
+PARSE_APP_LOG_LEVEL=$(jq -r '.parse_app_log_level | if . == null then true else . end' "${OPTIONS_FILE}")
 ADDITIONAL_CONFIG=$(jq -r '.additional_config // ""' "${OPTIONS_FILE}")
 
 # Optional journal-priority -> level relabel rule. Docker's journald
@@ -28,6 +29,33 @@ if [ "${JOURNAL_PRIORITY_AS_LEVEL}" = "true" ]; then
   }'
 else
     LEVEL_RULE=""
+fi
+
+# Optional generic application log-level parser. This intentionally runs in the
+# process stage, after journal relabeling, so an explicit level embedded in the
+# log line (for example CrowdSec's `level=info`) overrides Docker/journald stream
+# priority (`stderr` -> `err`). Journald priority remains useful as a fallback
+# when the line has no application-level severity.
+APP_LEVEL_STAGES=''
+if [ "${PARSE_APP_LOG_LEVEL}" = "true" ]; then
+    APP_LEVEL_STAGES='
+  stage.match {
+    selector = "{job=\"systemd-journal\"} |~ \"(?:^|[\\s,])level[=:]\\\\\"?(trace|debug|info|warn|warning|error|fatal|panic|TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL|PANIC)\\\\\"?(?:[\\s,]|$)\""
+
+    stage.regex {
+      expression = "(?:^|[\\s,])level[=:]\\\"?(?P<level>trace|debug|info|warn|warning|error|fatal|panic|TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL|PANIC)\\\"?(?:[\\s,]|$)"
+    }
+
+    stage.template {
+      source   = "level"
+      template = "{{ ToLower .Value }}"
+    }
+
+    stage.labels {
+      values = { level = "" }
+    }
+  }
+'
 fi
 
 # Optional pipeline stages extracting the Python application log level
@@ -63,6 +91,7 @@ echo " Journal path: ${JOURNAL_PATH}"
 echo " Log level: ${LOG_LEVEL}"
 echo " Journal priority as level: ${JOURNAL_PRIORITY_AS_LEVEL}"
 echo " Parse HA log level: ${PARSE_HA_LOG_LEVEL}"
+echo " Parse app log level: ${PARSE_APP_LOG_LEVEL}"
 echo "-----------------------------------------------------------"
 
 # Generate Alloy config
@@ -116,6 +145,7 @@ loki.process "journal" {
   stage.drop {
     expression = "^\\\\s*$"
   }
+${APP_LEVEL_STAGES}
 ${HA_LEVEL_STAGES}
   forward_to = [loki.write.loki.receiver]
 }

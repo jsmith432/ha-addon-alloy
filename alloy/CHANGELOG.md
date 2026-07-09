@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.2 - 2026-07-08
+
+### Added
+- `parse_app_log_level` option (default `true`). Extracts common embedded
+  application severities such as `level=info`, `level=warn`, and `level:error`
+  into the normalized `level` label.
+
+### Fixed
+- Application-provided log levels now override Docker/journald stream priority.
+  This prevents add-ons that write normal info output to stderr, such as
+  CrowdSec LAPI access logs, from being mislabeled as `level="error"` in
+  VictoriaLogs while preserving journald priority as a fallback for messages
+  without embedded severity.
+
 ## 1.1.1 - 2026-07-07
 
 ### Fixed
