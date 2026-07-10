@@ -36,6 +36,9 @@ RUN apk add --no-cache ca-certificates jq
 COPY --from=alloy-downloader /out/alloy /usr/bin/alloy
 COPY rootfs /
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q --spider http://127.0.0.1:12345/-/ready || exit 1
+
 LABEL \
     io.hass.type="app" \
     io.hass.name="Grafana Alloy" \

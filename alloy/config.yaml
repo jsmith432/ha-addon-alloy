@@ -11,14 +11,12 @@ arch:
   - amd64
 init: false
 startup: services
-boot: auto
 journald: true
 ports:
   12345/tcp: null
 ports_description:
   12345/tcp: "Alloy debug UI"
 webui: "http://[HOST]:[PORT:12345]"
-watchdog: "http://[HOST]:12345/-/ready"
 options:
   loki_url: null
   advanced_auth: false
