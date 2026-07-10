@@ -31,9 +31,15 @@ FROM ${BUILD_FROM}
 
 ARG BUILD_VERSION=dev
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates jq curl \
- && rm -rf /var/lib/apt/lists/*
+SHELL ["/bin/sh", "-eo", "pipefail", "-c"]
+
+RUN if command -v apk > /dev/null 2>&1; then \
+      apk add --no-cache ca-certificates jq curl; \
+    else \
+      apt-get update \
+      && apt-get install -y --no-install-recommends ca-certificates jq curl \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 COPY --from=alloy-downloader /out/alloy /usr/bin/alloy
 COPY rootfs /
