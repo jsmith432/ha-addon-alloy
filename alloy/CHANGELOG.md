@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.2 - 2026-07-10
+
+### Fixed
+- Removed `pipefail` shell option from the final build stage, as Debian's
+  default `/bin/sh` (`dash`) does not support it, which caused the build
+  to fail on Home Assistant deployments.
+
 ## 1.2.1 - 2026-07-10
 
 ### Fixed

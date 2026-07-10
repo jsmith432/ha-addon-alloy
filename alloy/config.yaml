@@ -1,5 +1,5 @@
 name: Grafana Alloy
-version: "1.2.1"
+version: "1.2.2"
 slug: alloy
 description: >-
   Ship Home Assistant logs to Loki using Grafana Alloy.
