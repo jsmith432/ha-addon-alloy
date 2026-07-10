@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.1 - 2026-07-10
+
+### Fixed
+- Detect Alpine vs Debian base image at build time so the correct package
+  manager (`apk` or `apt-get`) is used. Fixes the `apk: command not found`
+  build failure when the Home Assistant Supervisor supplies a Debian base image.
+- Remove obsolete `boot` and `watchdog` config keys flagged by the HA add-on
+  linter; add a native Docker `HEALTHCHECK` directive instead.
+- Set executable permissions on all shell scripts.
+
 ## 1.2.0 - 2026-07-10
 
 ### Added
