@@ -40,7 +40,7 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: alloy/Dockerfile
-          ignore: DL3006,DL3018
+          ignore: DL3006,DL3008,DL3018
 
       - name: Download and verify Alloy
         run: |

@@ -31,13 +31,15 @@ FROM ${BUILD_FROM}
 
 ARG BUILD_VERSION=dev
 
-RUN apk add --no-cache ca-certificates jq
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates jq curl \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY --from=alloy-downloader /out/alloy /usr/bin/alloy
 COPY rootfs /
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -q --spider http://127.0.0.1:12345/-/ready || exit 1
+    CMD curl -fsS http://127.0.0.1:12345/-/ready > /dev/null || exit 1
 
 LABEL \
     io.hass.type="app" \
