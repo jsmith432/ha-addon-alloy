@@ -31,7 +31,40 @@ loki_url: "http://10.1.1.31:9428/insert/loki/api/v1/push" # VictoriaLogs
 Notes:
 
 - Leading/trailing whitespace is trimmed before Alloy starts.
+- Authentication is disabled by default for local-LAN endpoints.
 - If this URL is wrong or unreachable, Alloy can start but log delivery will fail.
+
+### Advanced authentication
+
+Set `advanced_auth: true` only when the Loki-compatible endpoint requires authentication. URL-only, unauthenticated operation remains the default.
+
+#### Basic authentication
+
+```yaml
+loki_url: "https://logs.example.net/loki/api/v1/push"
+advanced_auth: true
+auth_type: basic
+auth_username: "123456"
+auth_password: "secret"
+```
+
+#### Bearer authentication
+
+```yaml
+loki_url: "https://gateway.example.net/loki/api/v1/push"
+advanced_auth: true
+auth_type: bearer
+bearer_token: "secret-token"
+```
+
+Basic and bearer authentication are mutually exclusive. When advanced authentication is enabled, the selected mode's required fields must be present or the app will stop with a configuration error.
+
+Optional advanced endpoint fields:
+
+- `tenant_id`: Loki tenant identifier (`X-Scope-OrgID`)
+- `tls_ca_pem`: PEM-encoded CA certificate for a private HTTPS endpoint
+
+Credential fields are masked in the Home Assistant configuration UI. The app never writes the destination URL, password, or token to its log.
 
 ### Optional toggles
 
@@ -55,7 +88,7 @@ Use `debug` only while troubleshooting Alloy itself; it can be noisy.
 
 #### `journal_priority_as_level`
 
-Maps systemd/journald priority into the normalized `level` label.
+Preserves systemd/journald priority in `journal_priority` and maps it into the normalized `level` label.
 
 Default:
 
@@ -68,6 +101,7 @@ Why this exists:
 - Many host/systemd journal entries do not contain an application-level severity in the message body.
 - Journald priority is often the best available severity for host services.
 - Keeping this enabled preserves useful queries such as `level="error"` for logs with no embedded severity.
+- Priority synonyms are normalized into `debug`, `info`, `warning`, or `error`; the original keyword remains in `journal_priority`.
 
 Caveat:
 
@@ -105,6 +139,14 @@ Recognized values:
 ```text
 trace, debug, info, warn, warning, error, fatal, panic
 ```
+
+Normalized values:
+
+- `trace`, `debug` → `debug`
+- `info` → `info`
+- `warn`, `warning` → `warning`
+- `error` → `error`
+- `fatal`, `panic` → `critical`
 
 Why this exists:
 
@@ -149,11 +191,24 @@ Why this exists:
 
 - HA Core/Supervisor messages can be written through a stream that journald marks as error even when the message is `INFO`.
 - This parser makes HA's own application-level severity authoritative while retaining `ha_level` for HA-specific dashboarding.
+- The severity must appear in the leading timestamp-and-level portion of the record, so severity words in the message body cannot overwrite the real level.
 
 Recommended setting:
 
 - Enable if you query or alert on `level` for Home Assistant/Supervisor logs.
 - Leave disabled only if you want journald stream priority to remain the sole `level` source for HA Core/Supervisor.
+
+#### `journal_max_age`
+
+Controls the oldest journal entries Alloy reads when it has no saved position.
+
+Default:
+
+```yaml
+journal_max_age: 7h
+```
+
+Use an Alloy duration such as `7h` or `24h`. A larger value can replay more historical records on first start and may cause the remote Loki endpoint to reject entries that are older than its ingestion window.
 
 #### `additional_config`
 
@@ -161,17 +216,12 @@ Raw Alloy config appended verbatim to the generated config.
 
 Default: unset.
 
-Example:
-
-```alloy
-local.file_match "extra" { path_targets = [{__path__ = "/config/home-assistant.log"}] }
-loki.source.file "extra" { targets = local.file_match.extra.targets forward_to = [loki.write.loki.receiver] }
-```
-
 Warning:
 
 - This is an escape hatch for advanced users.
+- It can define independent additional components but cannot modify the generated journal and write components.
 - Syntax errors here will prevent Alloy from starting.
+- The complete generated configuration is validated before the Alloy service starts.
 - Prefer built-in options when possible.
 
 ## Level precedence
@@ -196,12 +246,13 @@ All journal entries are shipped with these labels when available:
 | `syslog_identifier` | process/add-on identifier |
 | `transport` | journal transport type |
 | `container_name` | Docker container name for add-ons |
+| `journal_priority` | original systemd journal priority keyword when priority parsing is enabled |
 | `level` | normalized severity from app parser, HA parser, or journald fallback |
 | `ha_level` | original HA Core/Supervisor Python level when `parse_ha_log_level` is enabled |
 
 ## Debug UI
 
-The Alloy debug UI is available at:
+The Alloy diagnostic HTTP port is disabled on the host by default because its UI and troubleshooting endpoints do not have their own authentication. To enable it, assign host port `12345` under the app's **Network** settings. The UI is then available at:
 
 ```text
 http://<haos-ip>:12345
@@ -212,7 +263,9 @@ Use it to inspect component health, view the pipeline DAG, and troubleshoot issu
 ## Troubleshooting
 
 - **No logs in Loki/VictoriaLogs**: verify `loki_url` is reachable from HAOS and check Alloy logs for write errors.
-- **Add-on crashes on start**: check the add-on log for Alloy config errors. Set `log_level: debug` only if needed.
+- **App stops before Alloy starts**: check for a missing URL, incomplete advanced authentication, an unavailable journal mount, or an Alloy validation error.
+- **Authentication rejected**: confirm `advanced_auth`, `auth_type`, and the selected mode's credential fields. Do not place credentials directly in `loki_url`.
+- **App crashes on start**: check the app log for Alloy config errors. Set `log_level: debug` only if needed.
 - **`level="error"` on routine add-on logs**: keep `journal_priority_as_level: true`, but enable `parse_app_log_level` and/or `parse_ha_log_level` so app severity overrides stream priority.
 - **"timestamp too old" in Loki**: normal on first start if Alloy reads older journal entries; usually resolves once it catches up.
 

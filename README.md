@@ -24,15 +24,47 @@ Example for VictoriaLogs:
 
 ```yaml
 loki_url: "http://10.1.1.31:9428/insert/loki/api/v1/push"
+advanced_auth: false
 log_level: info
 journal_priority_as_level: true
 parse_app_log_level: true
 parse_ha_log_level: true
+journal_max_age: 7h
 ```
 
 ### `loki_url`
 
 Required. The full Loki-compatible push endpoint. For VictoriaLogs, use `/insert/loki/api/v1/push`.
+
+By default, Alloy sends to this URL without authentication. This is the simplest and recommended mode for a trusted local-LAN Loki or VictoriaLogs endpoint.
+
+### Advanced authentication
+
+Authentication is disabled by default. Set `advanced_auth: true` only when the remote endpoint requires it.
+
+Basic authentication:
+
+```yaml
+advanced_auth: true
+auth_type: basic
+auth_username: "123456"
+auth_password: "secret"
+```
+
+Bearer authentication:
+
+```yaml
+advanced_auth: true
+auth_type: bearer
+bearer_token: "secret-token"
+```
+
+The two authentication types are mutually exclusive. Advanced mode also supports:
+
+- `tenant_id`: optional Loki tenant identifier (`X-Scope-OrgID`)
+- `tls_ca_pem`: optional PEM-encoded CA certificate for a private HTTPS endpoint
+
+Incomplete advanced authentication prevents the app from starting. The destination URL and credentials are never printed to the app log.
 
 ### `log_level`
 
@@ -48,11 +80,13 @@ Default: `info`.
 
 ### `journal_priority_as_level`
 
-Maps systemd/journald priority to the normalized `level` label.
+Preserves systemd/journald priority as `journal_priority` and maps it to the normalized `level` label.
 
 Default: `true`.
 
 This is useful as a fallback for host/systemd logs that do not include their own severity. Docker/HAOS container logs can be misleading here because stderr is often stamped as `err`, so keep the app-level parsers enabled to override this when a real application severity is present.
+
+Priority synonyms are normalized into `debug`, `info`, `warning`, or `error`, while the original keyword remains available in `journal_priority`.
 
 ### `parse_app_log_level`
 
@@ -68,6 +102,8 @@ level="error"
 Default: `true`.
 
 When matched, this overrides the journald fallback `level`. This fixes add-ons such as CrowdSec where routine LAPI logs contain `level=info` but are written on a stream journald labels as error.
+
+Values are normalized as follows: `trace`/`debug` → `debug`, `warn`/`warning` → `warning`, and `fatal`/`panic` → `critical`.
 
 ### `parse_ha_log_level`
 
@@ -86,9 +122,19 @@ When enabled, it sets:
 
 This makes HA Core/Supervisor application severity override Docker/journald stream priority.
 
+The parser only accepts a severity in the leading timestamp-and-level portion of a Core or Supervisor record. Severity words appearing later in the message do not change the label.
+
+### `journal_max_age`
+
+Controls how far Alloy looks back in the journal when it has no saved position. Use an Alloy duration such as `7h` or `24h`.
+
+Default: `7h`.
+
 ### `additional_config`
 
-Optional raw Alloy config appended to the generated config. This is an advanced escape hatch. A syntax error here prevents Alloy from starting.
+Optional raw Alloy config appended to the generated config. This can define independent additional components but cannot modify the generated journal and write components. A syntax error here prevents Alloy from starting.
+
+The complete generated configuration is validated before the Alloy service starts.
 
 ## Level precedence
 
@@ -112,12 +158,12 @@ All systemd journal entries from HAOS, including:
 Labels applied when available:
 
 ```text
-unit, hostname, syslog_identifier, transport, container_name, level, ha_level
+unit, hostname, syslog_identifier, transport, container_name, journal_priority, level, ha_level
 ```
 
 ## Debug UI
 
-Access the Alloy pipeline inspector at:
+The host port is disabled by default because Alloy's diagnostic HTTP endpoints do not provide their own authentication. To use the pipeline inspector, assign host port `12345` under the app's **Network** settings, then open:
 
 ```text
 http://<haos-ip>:12345

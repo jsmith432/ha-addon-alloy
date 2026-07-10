@@ -1,0 +1,258 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 3 ]]; then
+    echo "Usage: render-alloy-config OPTIONS_FILE OUTPUT_FILE JOURNAL_PATH" >&2
+    exit 64
+fi
+
+OPTIONS_FILE=$1
+OUTPUT_FILE=$2
+JOURNAL_PATH=$3
+
+if [[ ! -r "${OPTIONS_FILE}" ]]; then
+    echo "Options file is not readable: ${OPTIONS_FILE}" >&2
+    exit 66
+fi
+
+if ! jq -e 'type == "object"' "${OPTIONS_FILE}" >/dev/null; then
+    echo "Options file must contain a JSON object" >&2
+    exit 65
+fi
+
+trim() {
+    sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+alloy_quote() {
+    jq -Rn --arg value "$1" '$value'
+}
+
+LOKI_URL=$(jq -r '.loki_url // empty' "${OPTIONS_FILE}" | trim)
+LOG_LEVEL=$(jq -r '.log_level // "info"' "${OPTIONS_FILE}")
+ADVANCED_AUTH=$(jq -r '.advanced_auth // false' "${OPTIONS_FILE}")
+AUTH_TYPE=$(jq -r '.auth_type // "basic"' "${OPTIONS_FILE}")
+JOURNAL_PRIORITY_AS_LEVEL=$(jq -r '.journal_priority_as_level | if . == null then true else . end' "${OPTIONS_FILE}")
+PARSE_HA_LOG_LEVEL=$(jq -r '.parse_ha_log_level // false' "${OPTIONS_FILE}")
+PARSE_APP_LOG_LEVEL=$(jq -r '.parse_app_log_level | if . == null then true else . end' "${OPTIONS_FILE}")
+JOURNAL_MAX_AGE=$(jq -r '.journal_max_age // "7h"' "${OPTIONS_FILE}" | trim)
+ADDITIONAL_CONFIG=$(jq -r '.additional_config // ""' "${OPTIONS_FILE}")
+
+if [[ -z "${LOKI_URL}" ]]; then
+    echo "loki_url must be configured" >&2
+    exit 65
+fi
+
+if [[ -z "${JOURNAL_MAX_AGE}" ]]; then
+    echo "journal_max_age must not be empty" >&2
+    exit 65
+fi
+
+LOKI_URL_LITERAL=$(alloy_quote "${LOKI_URL}")
+LOG_LEVEL_LITERAL=$(alloy_quote "${LOG_LEVEL}")
+JOURNAL_PATH_LITERAL=$(alloy_quote "${JOURNAL_PATH}")
+JOURNAL_MAX_AGE_LITERAL=$(alloy_quote "${JOURNAL_MAX_AGE}")
+
+AUTH_CONFIG=''
+TENANT_CONFIG=''
+TLS_CONFIG=''
+AUTH_MODE='none'
+
+if [[ "${ADVANCED_AUTH}" == "true" ]]; then
+    case "${AUTH_TYPE}" in
+        basic)
+            AUTH_USERNAME=$(jq -r '.auth_username // empty' "${OPTIONS_FILE}")
+            AUTH_PASSWORD=$(jq -r '.auth_password // empty' "${OPTIONS_FILE}")
+            if [[ -z "${AUTH_USERNAME//[[:space:]]/}" || -z "${AUTH_PASSWORD}" ]]; then
+                echo "advanced_auth with auth_type=basic requires auth_username and auth_password" >&2
+                exit 65
+            fi
+            AUTH_USERNAME_LITERAL=$(alloy_quote "${AUTH_USERNAME}")
+            AUTH_PASSWORD_LITERAL=$(alloy_quote "${AUTH_PASSWORD}")
+            printf -v AUTH_CONFIG '\n    basic_auth {\n      username = %s\n      password = %s\n    }' \
+                "${AUTH_USERNAME_LITERAL}" "${AUTH_PASSWORD_LITERAL}"
+            AUTH_MODE='basic'
+            ;;
+        bearer)
+            BEARER_TOKEN=$(jq -r '.bearer_token // empty' "${OPTIONS_FILE}")
+            if [[ -z "${BEARER_TOKEN}" ]]; then
+                echo "advanced_auth with auth_type=bearer requires bearer_token" >&2
+                exit 65
+            fi
+            BEARER_TOKEN_LITERAL=$(alloy_quote "${BEARER_TOKEN}")
+            printf -v AUTH_CONFIG '\n    bearer_token = %s' "${BEARER_TOKEN_LITERAL}"
+            AUTH_MODE='bearer'
+            ;;
+        *)
+            echo "advanced_auth requires auth_type to be basic or bearer" >&2
+            exit 65
+            ;;
+    esac
+
+    TENANT_ID=$(jq -r '.tenant_id // empty' "${OPTIONS_FILE}")
+    if [[ -n "${TENANT_ID}" ]]; then
+        TENANT_ID_LITERAL=$(alloy_quote "${TENANT_ID}")
+        printf -v TENANT_CONFIG '\n    tenant_id = %s' "${TENANT_ID_LITERAL}"
+    fi
+
+    TLS_CA_PEM=$(jq -r '.tls_ca_pem // empty' "${OPTIONS_FILE}")
+    if [[ -n "${TLS_CA_PEM}" ]]; then
+        TLS_CA_PEM_LITERAL=$(alloy_quote "${TLS_CA_PEM}")
+        printf -v TLS_CONFIG '\n    tls_config {\n      ca_pem = %s\n    }' "${TLS_CA_PEM_LITERAL}"
+    fi
+fi
+
+LEVEL_RULES=''
+if [[ "${JOURNAL_PRIORITY_AS_LEVEL}" == "true" ]]; then
+    LEVEL_RULES='  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "journal_priority"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    regex         = "emerg|alert|crit|critical|err|error"
+    replacement   = "error"
+    target_label  = "level"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    regex         = "warn|warning"
+    replacement   = "warning"
+    target_label  = "level"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    regex         = "notice|info"
+    replacement   = "info"
+    target_label  = "level"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    regex         = "debug"
+    replacement   = "debug"
+    target_label  = "level"
+  }'
+fi
+
+HA_LEVEL_STAGES=''
+if [[ "${PARSE_HA_LOG_LEVEL}" == "true" ]]; then
+    HA_LEVEL_STAGES='
+  stage.match {
+    selector = "{container_name=~\"homeassistant|hassio_supervisor\"}"
+
+    stage.regex {
+      expression = "^(?:\\[[^]]+\\]|[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][^ ]+)\\s+(?P<ha_level>DEBUG|INFO|WARNING|ERROR|CRITICAL)\\s"
+    }
+
+    stage.template {
+      source   = "level"
+      template = "{{ ToLower .ha_level }}"
+    }
+
+    stage.labels {
+      values = { ha_level = "", level = "" }
+    }
+  }
+'
+fi
+
+APP_LEVEL_STAGES=''
+if [[ "${PARSE_APP_LOG_LEVEL}" == "true" ]]; then
+    APP_LEVEL_STAGES='
+  stage.regex {
+    expression         = "(?:^|[\\s,])level[=:]\"?(?P<app_level>trace|debug|info|warn|warning|error|fatal|panic)\"?(?:[\\s,]|$)"
+    labels_from_groups = true
+  }
+
+  stage.match {
+    selector = "{app_level=~\".+\"}"
+
+    stage.template {
+      source   = "level"
+      template = "{{ if or (eq .app_level \"trace\") (eq .app_level \"debug\") }}debug{{ else if eq .app_level \"info\" }}info{{ else if or (eq .app_level \"warn\") (eq .app_level \"warning\") }}warning{{ else if eq .app_level \"error\" }}error{{ else }}critical{{ end }}"
+    }
+
+    stage.labels {
+      values = { level = "" }
+    }
+
+    stage.label_drop {
+      values = ["app_level"]
+    }
+  }
+'
+fi
+
+mkdir -p "$(dirname "${OUTPUT_FILE}")"
+umask 077
+
+cat >"${OUTPUT_FILE}" <<ALLOYCONFIG
+// Grafana Alloy config - auto-generated by the Home Assistant app
+// Do not edit directly - configure through the app options
+
+logging {
+  level = ${LOG_LEVEL_LITERAL}
+}
+
+// --- Read systemd journal ---
+loki.source.journal "journal" {
+  path          = ${JOURNAL_PATH_LITERAL}
+  max_age       = ${JOURNAL_MAX_AGE_LITERAL}
+  forward_to    = [loki.process.journal.receiver]
+  relabel_rules = loki.relabel.journal.rules
+  labels        = {
+    job = "systemd-journal",
+  }
+}
+
+// --- Relabel journal fields ---
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal__hostname"]
+    target_label  = "hostname"
+  }
+  rule {
+    source_labels = ["__journal_syslog_identifier"]
+    target_label  = "syslog_identifier"
+  }
+  rule {
+    source_labels = ["__journal__transport"]
+    target_label  = "transport"
+  }
+  rule {
+    source_labels = ["__journal_container_name"]
+    target_label  = "container_name"
+  }
+${LEVEL_RULES}
+}
+
+// --- Process journal logs ---
+loki.process "journal" {
+  stage.drop {
+    expression = "^\\\\s*$"
+  }
+${HA_LEVEL_STAGES}
+${APP_LEVEL_STAGES}
+  forward_to = [loki.write.loki.receiver]
+}
+
+// --- Write to Loki ---
+loki.write "loki" {
+  endpoint {
+    url = ${LOKI_URL_LITERAL}${AUTH_CONFIG}${TENANT_CONFIG}${TLS_CONFIG}
+  }
+}
+ALLOYCONFIG
+
+if [[ -n "${ADDITIONAL_CONFIG}" ]]; then
+    printf '\n// --- Additional user config ---\n%s\n' "${ADDITIONAL_CONFIG}" >>"${OUTPUT_FILE}"
+fi
+
+chmod 0600 "${OUTPUT_FILE}"
+printf 'Alloy configuration rendered (authentication: %s)\n' "${AUTH_MODE}"

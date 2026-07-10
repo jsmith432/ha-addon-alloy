@@ -1,0 +1,45 @@
+configuration:
+  loki_url:
+    name: Loki push URL
+    description: Full Loki-compatible push endpoint. No authentication is used by default.
+  advanced_auth:
+    name: Enable advanced authentication
+    description: Opt in to Basic or bearer authentication and advanced endpoint settings.
+  auth_type:
+    name: Authentication type
+    description: Select Basic or bearer authentication when advanced authentication is enabled.
+  auth_username:
+    name: Basic authentication username
+    description: Required when advanced authentication uses Basic authentication.
+  auth_password:
+    name: Basic authentication password
+    description: Required when advanced authentication uses Basic authentication.
+  bearer_token:
+    name: Bearer token
+    description: Required when advanced authentication uses bearer authentication.
+  tenant_id:
+    name: Loki tenant ID
+    description: Optional X-Scope-OrgID value for a multi-tenant Loki endpoint.
+  tls_ca_pem:
+    name: Custom CA certificate
+    description: Optional PEM-encoded CA certificate used to verify the Loki endpoint.
+  log_level:
+    name: Alloy log level
+    description: Controls Alloy's own logging verbosity.
+  journal_priority_as_level:
+    name: Use journal priority as level
+    description: Sets a fallback level label from the systemd journal priority.
+  parse_ha_log_level:
+    name: Parse Home Assistant log levels
+    description: Extracts the leading severity from Core and Supervisor log records.
+  parse_app_log_level:
+    name: Parse embedded app log levels
+    description: Extracts severities such as level=info from application messages.
+  journal_max_age:
+    name: Initial journal lookback
+    description: Oldest journal entries read on startup, expressed as an Alloy duration such as 7h or 24h.
+  additional_config:
+    name: Additional Alloy configuration
+    description: Advanced raw Alloy configuration appended after the generated pipeline.
+network:
+  12345/tcp: Alloy diagnostic UI and HTTP endpoints

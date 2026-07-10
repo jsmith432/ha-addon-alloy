@@ -17,7 +17,7 @@
 - `basic`: requires `auth_username` and `auth_password`.
 - `bearer`: requires `bearer_token`.
 
-Both modes may additionally set `tenant_id` and `tls_ca_pem`. Password and token fields use Home Assistant's masked `password` schema type. Arbitrary headers remain available through the existing `additional_config` escape hatch rather than expanding the normal schema.
+Both modes may additionally set `tenant_id` and `tls_ca_pem`. Password and token fields use Home Assistant's masked `password` schema type. Arbitrary endpoint headers are deliberately out of scope for the normal schema; `additional_config` remains available for users who define a separate custom pipeline.
 
 ## Runtime design
 

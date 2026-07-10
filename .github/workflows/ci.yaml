@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.0
+
+      - name: Install test tools
+        run: sudo apt-get update && sudo apt-get install --yes apparmor-utils jq shellcheck unzip wget
+
+      - name: Lint Home Assistant app metadata
+        uses: frenck/action-addon-linter@v2.21
+        with:
+          path: ./alloy
+
+      - name: Lint shell scripts
+        run: |
+          shellcheck \
+            alloy/rootfs/etc/s6-overlay/s6-rc.d/init-alloy/run \
+            alloy/rootfs/etc/s6-overlay/s6-rc.d/alloy/run \
+            alloy/rootfs/usr/local/bin/render-alloy-config \
+            tests/test-render.sh
+
+      - name: Validate AppArmor profile
+        run: apparmor_parser -Q -T alloy/apparmor.txt
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: alloy/Dockerfile
+          ignore: DL3018
+
+      - name: Download and verify Alloy
+        run: |
+          alloy_version=$(sed -n 's/^ARG ALLOY_VERSION=//p' alloy/Dockerfile)
+          wget --quiet "https://github.com/grafana/alloy/releases/download/v${alloy_version}/SHA256SUMS" -O /tmp/SHA256SUMS
+          wget --quiet "https://github.com/grafana/alloy/releases/download/v${alloy_version}/alloy-linux-amd64.zip" -O /tmp/alloy-linux-amd64.zip
+          expected=$(sed -n 's/  alloy-linux-amd64.zip$//p' /tmp/SHA256SUMS)
+          printf '%s  %s\n' "${expected}" /tmp/alloy-linux-amd64.zip | sha256sum --check --strict
+          unzip -q /tmp/alloy-linux-amd64.zip -d /tmp/alloy
+          chmod 0755 /tmp/alloy/alloy-linux-amd64
+          echo "ALLOY_BIN=/tmp/alloy/alloy-linux-amd64" >> "${GITHUB_ENV}"
+
+      - name: Test generated configurations
+        run: tests/test-render.sh
+
+  build:
+    name: Build amd64 and arm64
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build multi-architecture image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./alloy
+          platforms: linux/amd64,linux/arm64
+          push: false

@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.2.0 - 2026-07-10
+
+### Added
+- Optional advanced authentication, disabled by default, with mutually exclusive
+  Basic and bearer modes.
+- Optional Loki tenant ID and custom CA PEM settings for authenticated endpoints.
+- Configurable `journal_max_age` with a seven-hour default.
+- Home Assistant configuration and network translations.
+- Automated render tests, real Alloy configuration validation, shell linting,
+  app metadata linting, and amd64/arm64 image builds in CI.
+
+### Changed
+- New installations must provide `loki_url`; the unusable container-local
+  `localhost` default has been removed. URL-only local-LAN operation remains the
+  default and does not require authentication.
+- The Alloy diagnostic host port is now disabled by default and must be
+  explicitly enabled in Network settings.
+- Home Assistant log levels are extracted from the leading timestamp/level
+  fields instead of matching severity words anywhere in the message.
+- Generic embedded app levels now run after HA parsing, matching the documented
+  precedence.
+- Journal priority is retained as `journal_priority` and its common synonyms are
+  normalized into the `level` label.
+- Embedded app severity synonyms such as `warn`, `fatal`, and `panic` are
+  normalized to the same stable level vocabulary.
+- Migrated to the current multi-platform BuildKit build model and removed the
+  obsolete `build.yaml`.
+
+### Security
+- Verify downloaded Alloy release archives against pinned publisher SHA-256
+  digests before installing them.
+- Stop logging the Loki destination URL and render dynamic values as escaped
+  Alloy string literals.
+- Write generated configuration with mode `0600` and validate it before service
+  startup.
+- Replace the disabled AppArmor setting with a custom profile and remove the
+  unused writable `addon_config` mount.
+
 ## 1.1.4 - 2026-07-08
 
 ### Changed

@@ -1,13 +1,11 @@
 name: Grafana Alloy
-version: "1.1.4"
+version: "1.2.0"
 slug: alloy
 description: >-
   Ship Home Assistant logs to Loki using Grafana Alloy.
   Replacement for the deprecated Promtail add-on.
   Reads systemd journal and forwards to a remote Loki instance.
 url: https://github.com/jsmith432/ha-addon-alloy
-codeowners:
-  - "@jsmith432"
 arch:
   - aarch64
   - amd64
@@ -15,25 +13,33 @@ init: false
 startup: services
 boot: auto
 journald: true
-map:
-  - addon_config:rw
 ports:
-  12345/tcp: 12345
+  12345/tcp: null
 ports_description:
   12345/tcp: "Alloy debug UI"
-watchdog: "http://[HOST]:[PORT:12345]/-/ready"
+webui: "http://[HOST]:[PORT:12345]"
+watchdog: "http://[HOST]:12345/-/ready"
 options:
-  loki_url: "http://localhost:3100/loki/api/v1/push"
+  loki_url: null
+  advanced_auth: false
   log_level: info
   journal_priority_as_level: true
   parse_ha_log_level: false
   parse_app_log_level: true
+  journal_max_age: 7h
 schema:
   loki_url: url
+  advanced_auth: bool
+  auth_type: "list(basic|bearer)?"
+  auth_username: "str?"
+  auth_password: "password?"
+  bearer_token: "password?"
+  tenant_id: "str?"
+  tls_ca_pem: "str?"
   log_level: "list(debug|info|warn|error)"
   journal_priority_as_level: "bool?"
   parse_ha_log_level: "bool?"
   parse_app_log_level: "bool?"
+  journal_max_age: "str?"
   additional_config: "str?"
 stage: experimental
-apparmor: false
