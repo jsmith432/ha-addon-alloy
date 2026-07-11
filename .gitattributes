@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.sh text eol=lf
+alloy/rootfs/etc/s6-overlay/s6-rc.d/init-alloy/run text eol=lf
+alloy/rootfs/etc/s6-overlay/s6-rc.d/alloy/run text eol=lf
+alloy/rootfs/usr/local/bin/render-alloy-config text eol=lf
