@@ -1,8 +1,19 @@
 # Home Assistant App: Grafana Alloy
 
+[![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/jsmith432/ha-addon-alloy)
+![Version](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fjsmith432%2Fha-addon-alloy%2Frefs%2Fheads%2Fmain%2Falloy%2Fconfig.yaml&query=%24.version&label=Ver)
+![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-green.svg) ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-green.svg)
+
+[![ci](https://github.com/jsmith432/ha-addon-alloy/actions/workflows/ci.yaml/badge.svg)](https://github.com/jsmith432/ha-addon-alloy/actions/workflows/ci.yaml)
+[![release](https://github.com/jsmith432/ha-addon-alloy/actions/workflows/release.yml/badge.svg)](https://github.com/jsmith432/ha-addon-alloy/actions/workflows/release.yml)
+
 Ship Home Assistant OS logs to [Grafana Loki](https://grafana.com/oss/loki/) or another Loki-compatible endpoint, such as VictoriaLogs, using [Grafana Alloy](https://grafana.com/docs/alloy/latest/).
 
-Maintained fork of [ecohash-co/ha-addon-alloy](https://github.com/ecohash-co/ha-addon-alloy) with usage reporting disabled, newer Alloy, whitespace-hardened config, and log-level normalization options.
+Maintained fork of [ecohash-co/ha-addon-alloy](https://github.com/ecohash-co/ha-addon-alloy) featuring several major improvements:
+* **Fully Integrated Ingress UI**: Access the Grafana Alloy web interface securely and directly from the Home Assistant sidebar without needing to expose manual ports.
+* **Automated CI/CD Pipelines**: Automated GitHub Actions workflows for robust linting, configuration testing, and semantic version releases.
+* **Strict AppArmor Security**: Implements a custom AppArmor profile that heavily restricts system calls, ensuring the container runs with least-privilege access and protecting the host environment.
+* **Core Enhancements**: Usage reporting disabled by default, upgraded Alloy versions, whitespace-hardened configurations, and robust log-level normalization options.
 
 ## Why?
 
@@ -11,6 +22,8 @@ The official Promtail add-on (v2.2.0) bundles Promtail 2.6.1, which cannot read 
 Grafana Alloy is the official successor to Promtail, Grafana Agent, and Grafana Agent Flow. It uses a component-based pipeline architecture and has native systemd journal support that works with all journal formats.
 
 ## Installation
+
+[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/jsmith432/ha-addon-alloy)
 
 1. Open **Settings** > **Add-ons** > **Add-on Store**
 2. Click the overflow menu (three dots, top-right) > **Repositories**
