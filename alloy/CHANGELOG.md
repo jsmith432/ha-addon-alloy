@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.5 - 2026-07-11
+
+### Fixed
+- `parse_ha_log_level` regex now tolerates the ANSI color codes that HA Core and Supervisor prepend to their journald lines. Since 1.2.3 the anchored regex never matched colored lines, so HA/Supervisor `INFO` records written to stderr fell back to the journald priority and were shipped with `level=error`.
+
 ## 1.2.4 - 2026-07-11
 
 ### Added

@@ -192,6 +192,8 @@ Why this exists:
 - HA Core/Supervisor messages can be written through a stream that journald marks as error even when the message is `INFO`.
 - This parser makes HA's own application-level severity authoritative while retaining `ha_level` for HA-specific dashboarding.
 - The severity must appear in the leading timestamp-and-level portion of the record, so severity words in the message body cannot overwrite the real level.
+- Leading ANSI color codes are tolerated: HA Core and Supervisor colorize their journald output (for example `ESC[32m` before an `INFO` line), and the parser matches through them.
+- The `journal_priority` label always keeps the raw journald keyword. Records written to stderr keep `journal_priority=error` even after this parser sets `level` correctly, so alerting and filtering should use `level`.
 
 Recommended setting:
 
@@ -209,6 +211,8 @@ journal_max_age: 7h
 ```
 
 Use an Alloy duration such as `7h` or `24h`. A larger value can replay more historical records on first start and may cause the remote Loki endpoint to reject entries that are older than its ingestion window.
+
+The journal position is stored in the add-on's persistent `/data` and survives restarts, rebuilds, and updates. Uninstalling and reinstalling the add-on wipes `/data`, so the next start re-ships the last `journal_max_age` of entries — these arrive as duplicate records in the destination.
 
 #### `additional_config`
 

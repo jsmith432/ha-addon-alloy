@@ -72,7 +72,7 @@ assert_not_contains "${TMP_DIR}/plain.log" '10.0.0.20'
 ha_line=$(grep -n -m1 '(?P<ha_level>' "${TMP_DIR}/plain.alloy" | cut -d: -f1)
 app_line=$(grep -n -m1 '(?P<app_level>' "${TMP_DIR}/plain.alloy" | cut -d: -f1)
 ((ha_line < app_line)) || fail "generic app parsing must run after HA parsing"
-assert_contains "${TMP_DIR}/plain.alloy" 'expression = "^(?:\\[[^]]+\\]|[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][^ ]+)\\s+'
+assert_contains "${TMP_DIR}/plain.alloy" 'expression = "^(?:\\x1b\\[[0-9;]*m)*(?:\\[[^]]+\\]|[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][^ ]+)\\s+'
 assert_not_contains "${TMP_DIR}/plain.alloy" '|= \" ERROR \"'
 assert_contains "${TMP_DIR}/plain.alloy" 'target_label  = "journal_priority"'
 assert_contains "${TMP_DIR}/plain.alloy" 'regex         = "emerg|alert|crit|critical|err|error"'

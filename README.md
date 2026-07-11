@@ -133,13 +133,17 @@ When enabled, it sets:
 
 This makes HA Core/Supervisor application severity override Docker/journald stream priority.
 
-The parser only accepts a severity in the leading timestamp-and-level portion of a Core or Supervisor record. Severity words appearing later in the message do not change the label.
+The parser only accepts a severity in the leading timestamp-and-level portion of a Core or Supervisor record. Severity words appearing later in the message do not change the label. ANSI color codes at the start of the line (HA Core and Supervisor colorize their output) are tolerated.
+
+Note that the `journal_priority` label always preserves the raw journald priority keyword, so HA/Supervisor records written to stderr keep `journal_priority=error` even after this parser corrects `level`. Alert on `level`, not `journal_priority`.
 
 ### `journal_max_age`
 
 Controls how far Alloy looks back in the journal when it has no saved position. Use an Alloy duration such as `7h` or `24h`.
 
 Default: `7h`.
+
+The journal position survives restarts, rebuilds, and updates (it is stored in the add-on's persistent `/data`). Uninstalling and reinstalling the add-on wipes `/data`, so the next start re-ships the last `journal_max_age` of journal entries, which appear as duplicate records in the destination.
 
 ### `additional_config`
 
