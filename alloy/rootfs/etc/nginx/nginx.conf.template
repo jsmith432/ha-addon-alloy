@@ -1,0 +1,37 @@
+user root;
+worker_processes 1;
+pid /var/run/nginx.pid;
+error_log /dev/stdout info;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    
+    access_log off;
+    error_log /dev/stdout;
+    
+    sendfile on;
+    keepalive_timeout 65;
+
+    server {
+        listen 12345 default_server;
+        server_name _;
+
+        # Ingress traffic proxy
+        location / {
+            # Pass to Alloy internally listening on 12346.
+            # INGRESS_URL is replaced by the run script.
+            proxy_pass http://127.0.0.1:12346%%INGRESS_URL%%$request_uri;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+    }
+}

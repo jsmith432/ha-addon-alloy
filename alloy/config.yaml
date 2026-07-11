@@ -12,11 +12,10 @@ arch:
 init: false
 startup: services
 journald: true
-ports:
-  12345/tcp: null
-ports_description:
-  12345/tcp: "Alloy debug UI"
-webui: "http://[HOST]:[PORT:12345]"
+ingress: true
+ingress_port: 12345
+ingress_stream: true
+panel_icon: "mdi:chart-timeline-variant"
 options:
   loki_url: null
   advanced_auth: false
@@ -40,4 +39,3 @@ schema:
   parse_app_log_level: "bool?"
   journal_max_age: "str?"
   additional_config: "str?"
-stage: experimental

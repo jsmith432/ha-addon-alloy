@@ -34,15 +34,23 @@ ARG BUILD_VERSION=dev
 
 
 RUN if command -v apk > /dev/null 2>&1; then \
-      apk add --no-cache ca-certificates jq curl; \
+      apk add --no-cache ca-certificates jq curl nginx; \
     else \
       apt-get update \
-      && apt-get install -y --no-install-recommends ca-certificates jq curl \
+      && apt-get install -y --no-install-recommends ca-certificates jq curl nginx \
       && rm -rf /var/lib/apt/lists/*; \
     fi
 
 COPY --from=alloy-downloader /out/alloy /usr/bin/alloy
 COPY rootfs /
+
+# Pre-create directories (rootfs is read-only at runtime in HA Supervisor)
+# and ensure scripts are executable
+RUN mkdir -p /etc/alloy /data/alloy \
+ && chmod 0755 \
+      /etc/s6-overlay/s6-rc.d/init-alloy/run \
+      /etc/s6-overlay/s6-rc.d/alloy/run \
+      /usr/local/bin/render-alloy-config
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -fsS http://127.0.0.1:12345/-/ready > /dev/null || exit 1

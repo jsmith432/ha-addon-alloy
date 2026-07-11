@@ -1,7 +1,26 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
+# Fetch the dynamic Ingress URL from the Supervisor API
+INGRESS_URL=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" http://supervisor/addons/self/info | jq -r '.data.ingress_url')
+
+# Strip trailing slash if present
+INGRESS_URL=${INGRESS_URL%/}
+
+if [ "$INGRESS_URL" != "null" ] && [ -n "$INGRESS_URL" ]; then
+    INGRESS_PREFIX="--server.http.ui-path-prefix=${INGRESS_URL}"
+else
+    INGRESS_PREFIX=""
+fi
+
+# Configure NGINX reverse proxy template
+sed "s|%%INGRESS_URL%%|${INGRESS_URL}|g" /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+
+# Start NGINX in the background (daemon mode)
+nginx -c /etc/nginx/nginx.conf
+
 exec /usr/bin/alloy run \
-    --server.http.listen-addr=0.0.0.0:12345 \
+    --server.http.listen-addr=127.0.0.1:12346 \
     --storage.path=/data/alloy \
     --disable-reporting \
+    ${INGRESS_PREFIX} \
     /etc/alloy/config.alloy
