@@ -250,15 +250,13 @@ All journal entries are shipped with these labels when available:
 | `level` | normalized severity from app parser, HA parser, or journald fallback |
 | `ha_level` | original HA Core/Supervisor Python level when `parse_ha_log_level` is enabled |
 
-## Debug UI
+## Grafana Alloy UI
 
-The Alloy diagnostic HTTP port is disabled on the host by default because its UI and troubleshooting endpoints do not have their own authentication. To enable it, assign host port `12345` under the app's **Network** settings. The UI is then available at:
+The Alloy diagnostic UI is fully integrated into Home Assistant via Ingress. Once the add-on is started, a new **Grafana Alloy** link will appear in your Home Assistant sidebar.
 
-```text
-http://<haos-ip>:12345
-```
+Clicking this link will securely open the Alloy UI directly within Home Assistant, requiring no additional network port configurations or separate authentication.
 
-Use it to inspect component health, view the pipeline DAG, and troubleshoot issues.
+Use it to inspect component health, view the pipeline DAG, live-stream component logs, and troubleshoot issues.
 
 ## Troubleshooting
 

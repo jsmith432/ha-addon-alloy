@@ -41,5 +41,3 @@ configuration:
   additional_config:
     name: Additional Alloy configuration
     description: Advanced raw Alloy configuration appended after the generated pipeline.
-network:
-  12345/tcp: Alloy diagnostic UI and HTTP endpoints
