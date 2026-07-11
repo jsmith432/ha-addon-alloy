@@ -1,4 +1,4 @@
-# Home Assistant App: Grafana Alloy
+# Grafana Alloy for Home Assistant
 
 [![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/jsmith432/ha-addon-alloy)
 ![Version](https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fjsmith432%2Fha-addon-alloy%2Frefs%2Fheads%2Fmain%2Falloy%2Fconfig.yaml&query=%24.version&label=Ver)
@@ -7,7 +7,7 @@
 [![ci](https://github.com/jsmith432/ha-addon-alloy/actions/workflows/ci.yaml/badge.svg)](https://github.com/jsmith432/ha-addon-alloy/actions/workflows/ci.yaml)
 [![release](https://github.com/jsmith432/ha-addon-alloy/actions/workflows/release.yml/badge.svg)](https://github.com/jsmith432/ha-addon-alloy/actions/workflows/release.yml)
 
-Ship Home Assistant OS logs to [Grafana Loki](https://grafana.com/oss/loki/) or another Loki-compatible endpoint, such as VictoriaLogs, using [Grafana Alloy](https://grafana.com/docs/alloy/latest/).
+Ship Home Assistant OS logs to [Grafana Loki](https://grafana.com/oss/loki/) or another Loki-compatible endpoint, such as [VictoriaLogs](https://victorialogs.com/), using [Grafana Alloy](https://grafana.com/docs/alloy/latest/).
 
 Maintained fork of [ecohash-co/ha-addon-alloy](https://github.com/ecohash-co/ha-addon-alloy) featuring several major improvements:
 * **Fully Integrated Ingress UI**: Access the Grafana Alloy web interface securely and directly from the Home Assistant sidebar without needing to expose manual ports.
@@ -15,11 +15,9 @@ Maintained fork of [ecohash-co/ha-addon-alloy](https://github.com/ecohash-co/ha-
 * **Strict AppArmor Security**: Implements a custom AppArmor profile that heavily restricts system calls, ensuring the container runs with least-privilege access and protecting the host environment.
 * **Core Enhancements**: Usage reporting disabled by default, upgraded Alloy versions, whitespace-hardened configurations, and robust log-level normalization options.
 
-## Why?
+## Why use Grafana Alloy?
 
-The official Promtail add-on (v2.2.0) bundles Promtail 2.6.1, which cannot read the compact journal format introduced in systemd 252+ (HAOS 11+). This means **Promtail silently fails to ship logs on modern HAOS installations**.
-
-Grafana Alloy is the official successor to Promtail, Grafana Agent, and Grafana Agent Flow. It uses a component-based pipeline architecture and has native systemd journal support that works with all journal formats.
+[Grafana Alloy](https://grafana.com/docs/alloy/latest/) is the official successor to [Promtail](https://grafana.com/docs/loki/latest/send/promtail/), [Grafana Agent](https://grafana.com/docs/agent/latest/), and [Grafana Agent Flow](https://grafana.com/docs/agent/latest/flow/). It uses a component-based pipeline architecture and has native systemd journal support that works with all journal formats.
 
 ## Installation
 
@@ -33,10 +31,10 @@ Grafana Alloy is the official successor to Promtail, Grafana Agent, and Grafana 
 
 ## Configuration
 
-Example for VictoriaLogs:
+Example for [VictoriaLogs](https://victorialogs.com):
 
 ```yaml
-loki_url: "http://10.1.1.31:9428/insert/loki/api/v1/push"
+loki_url: "http://[IP_ADDRESS]/insert/loki/api/v1/push"
 advanced_auth: false
 log_level: info
 journal_priority_as_level: true
@@ -174,13 +172,9 @@ Labels applied when available:
 unit, hostname, syslog_identifier, transport, container_name, journal_priority, level, ha_level
 ```
 
-## Debug UI
+## Ingress UI
 
-The host port is disabled by default because Alloy's diagnostic HTTP endpoints do not provide their own authentication. To use the pipeline inspector, assign host port `12345` under the app's **Network** settings, then open:
-
-```text
-http://<haos-ip>:12345
-```
+The Grafana Alloy pipeline inspector is fully integrated into Home Assistant. Simply click on the add-on in your sidebar or click **Open Web UI** to view component health, the pipeline DAG, and live-stream logs.
 
 ## License
 

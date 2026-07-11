@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.2.4 - 2026-07-11
+
+### Added
+- Added custom, strict AppArmor profile to secure the container execution environment with least-privilege access.
+- Enforced Unix `LF` line endings via `.gitattributes` to prevent cross-platform CI linting failures on Windows hosts.
+
+### Changed
+- Expanded and updated root README documentation to cover Ingress UI, CI/CD, and AppArmor features.
+
+## 1.2.3 - 2026-07-11
+
+### Added
+- Added fully integrated Home Assistant Ingress UI using an internal NGINX reverse proxy. The Alloy web interface can now be accessed securely from the Home Assistant sidebar.
+- Added automated CI/CD GitHub Actions workflows (`ci.yaml` and `release.yml`) for robust configuration testing, linting, and semantic releases.
+
+### Changed
+- Graduated the add-on stage from `experimental` to `stable`.
+- Removed manual host port mapping requirements; `ports` and `webui` configuration are completely superseded by Ingress.
+- Replaced outdated Debug UI documentation in `DOCS.md` with Ingress UI instructions.
+
 ## 1.2.2 - 2026-07-10
 
 ### Fixed
