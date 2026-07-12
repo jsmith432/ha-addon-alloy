@@ -184,21 +184,59 @@ DEBUG, INFO, WARNING, ERROR, CRITICAL
 
 Scope:
 
-- Only applies to `homeassistant` and `hassio_supervisor` container logs.
-- Other add-ons are unaffected.
+- Applies to `homeassistant` and `hassio_supervisor` container logs.
+- Additional containers can be included via `parse_python_log_containers`.
 
 Why this exists:
 
 - HA Core/Supervisor messages can be written through a stream that journald marks as error even when the message is `INFO`.
 - This parser makes HA's own application-level severity authoritative while retaining `ha_level` for HA-specific dashboarding.
 - The severity must appear in the leading timestamp-and-level portion of the record, so severity words in the message body cannot overwrite the real level.
-- Leading ANSI color codes are tolerated: HA Core and Supervisor colorize their journald output (for example `ESC[32m` before an `INFO` line), and the parser matches through them.
+- Leading ANSI color codes are tolerated: HA Core and Supervisor colorize their journald output (for example `ESC[32m` before an `INFO` line), and the parser matches through them. `WARN` is also recognized and normalized to `warning`.
 - The `journal_priority` label always keeps the raw journald keyword. Records written to stderr keep `journal_priority=error` even after this parser sets `level` correctly, so alerting and filtering should use `level`.
 
 Recommended setting:
 
 - Enable if you query or alert on `level` for Home Assistant/Supervisor logs.
 - Leave disabled only if you want journald stream priority to remain the sole `level` source for HA Core/Supervisor.
+
+#### `parse_python_log_containers`
+
+Optional container-name regex fragment that extends the `parse_ha_log_level` parser to additional containers logging Python-style leading severities.
+
+Example:
+
+```yaml
+parse_ha_log_level: true
+parse_python_log_containers: "addon_5c53de3b_esphome|addon_core_matter_server"
+```
+
+Why this exists:
+
+- Add-ons such as ESPHome use the same colorlog format as HA Core, and Matter Server logs a leading timestamp and severity; without parsing, their routine `INFO`/`WARN` records ship as `level=error` because they are written to stderr.
+
+Notes:
+
+- Requires `parse_ha_log_level: true`; ignored otherwise.
+- Only letters, digits, and the regex characters `_ . - | * + ? ( ) [ ] { } ^ $` are accepted. Anything else fails validation before Alloy starts.
+
+#### `strip_ansi_colors`
+
+Removes ANSI terminal color escape sequences from log messages before any parsing or shipping.
+
+Default:
+
+```yaml
+strip_ansi_colors: true
+```
+
+Why this exists:
+
+- HA Core, Supervisor, and many add-ons colorize their output. The raw escape codes (for example `ESC[32m`) pollute full-text search, waste storage, and render as noise in log UIs.
+
+Recommended setting:
+
+- Keep enabled. Disable only if you need byte-identical original messages.
 
 #### `journal_max_age`
 

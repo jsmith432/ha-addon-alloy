@@ -71,8 +71,14 @@ assert_not_contains "${TMP_DIR}/plain.log" '10.0.0.20'
 
 ha_line=$(grep -n -m1 '(?P<ha_level>' "${TMP_DIR}/plain.alloy" | cut -d: -f1)
 app_line=$(grep -n -m1 '(?P<app_level>' "${TMP_DIR}/plain.alloy" | cut -d: -f1)
+strip_line=$(grep -n -m1 'stage.replace' "${TMP_DIR}/plain.alloy" | cut -d: -f1)
 ((ha_line < app_line)) || fail "generic app parsing must run after HA parsing"
+((strip_line < ha_line)) || fail "ANSI stripping must run before HA parsing"
+assert_contains "${TMP_DIR}/plain.alloy" 'expression = "(\\x1b\\[[0-9;]*m)"'
 assert_contains "${TMP_DIR}/plain.alloy" 'expression = "^(?:\\x1b\\[[0-9;]*m)*(?:\\[[^]]+\\]|[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][^ ]+)\\s+'
+assert_contains "${TMP_DIR}/plain.alloy" '(?P<ha_level>DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL)'
+assert_contains "${TMP_DIR}/plain.alloy" '{{ if eq .ha_level \"WARN\" }}warning{{ else }}{{ ToLower .ha_level }}{{ end }}'
+assert_contains "${TMP_DIR}/plain.alloy" 'selector = "{container_name=~\"homeassistant|hassio_supervisor\"}"'
 assert_not_contains "${TMP_DIR}/plain.alloy" '|= \" ERROR \"'
 assert_contains "${TMP_DIR}/plain.alloy" 'target_label  = "journal_priority"'
 assert_contains "${TMP_DIR}/plain.alloy" 'regex         = "emerg|alert|crit|critical|err|error"'
@@ -101,6 +107,40 @@ done
 assert_not_contains "${TMP_DIR}/matrix-false-false-false.alloy" 'target_label  = "journal_priority"'
 assert_not_contains "${TMP_DIR}/matrix-false-false-false.alloy" '(?P<ha_level>'
 assert_not_contains "${TMP_DIR}/matrix-false-false-false.alloy" '(?P<app_level>'
+
+cat >"${TMP_DIR}/no-strip.json" <<'JSON'
+{
+  "loki_url": "http://loki.local:3100/loki/api/v1/push",
+  "advanced_auth": false,
+  "strip_ansi_colors": false
+}
+JSON
+render_case no-strip
+assert_not_contains "${TMP_DIR}/no-strip.alloy" 'stage.replace'
+
+cat >"${TMP_DIR}/python-extra.json" <<'JSON'
+{
+  "loki_url": "http://loki.local:3100/loki/api/v1/push",
+  "advanced_auth": false,
+  "parse_ha_log_level": true,
+  "parse_python_log_containers": "addon_5c53de3b_esphome|addon_core_matter_server"
+}
+JSON
+render_case python-extra
+assert_contains "${TMP_DIR}/python-extra.alloy" 'selector = "{container_name=~\"homeassistant|hassio_supervisor|addon_5c53de3b_esphome|addon_core_matter_server\"}"'
+
+cat >"${TMP_DIR}/python-invalid.json" <<'JSON'
+{
+  "loki_url": "http://loki.local:3100/loki/api/v1/push",
+  "advanced_auth": false,
+  "parse_ha_log_level": true,
+  "parse_python_log_containers": "bad\"container"
+}
+JSON
+if "${RENDERER}" "${TMP_DIR}/python-invalid.json" "${TMP_DIR}/python-invalid.alloy" /var/log/journal >"${TMP_DIR}/python-invalid.log" 2>&1; then
+    fail "parse_python_log_containers with a quote was accepted"
+fi
+assert_contains "${TMP_DIR}/python-invalid.log" 'parse_python_log_containers may only contain'
 
 cat >"${TMP_DIR}/basic.json" <<'JSON'
 {

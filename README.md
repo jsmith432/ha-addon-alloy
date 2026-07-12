@@ -133,9 +133,28 @@ When enabled, it sets:
 
 This makes HA Core/Supervisor application severity override Docker/journald stream priority.
 
-The parser only accepts a severity in the leading timestamp-and-level portion of a Core or Supervisor record. Severity words appearing later in the message do not change the label. ANSI color codes at the start of the line (HA Core and Supervisor colorize their output) are tolerated.
+The parser only accepts a severity in the leading timestamp-and-level portion of a Core or Supervisor record. Severity words appearing later in the message do not change the label. ANSI color codes around the timestamp and severity are tolerated, and `WARN` is recognized and normalized to `warning`.
 
 Note that the `journal_priority` label always preserves the raw journald priority keyword, so HA/Supervisor records written to stderr keep `journal_priority=error` even after this parser corrects `level`. Alert on `level`, not `journal_priority`.
+
+### `parse_python_log_containers`
+
+Optional container-name regex fragment that extends the `parse_ha_log_level` parser to additional containers logging Python-style leading severities:
+
+```yaml
+parse_ha_log_level: true
+parse_python_log_containers: "addon_5c53de3b_esphome|addon_core_matter_server"
+```
+
+This fixes add-ons such as ESPHome (which uses the same colorlog format as HA Core) and Matter Server shipping routine `INFO`/`WARN` records as `level=error` because they write to stderr. Only letters, digits, and basic regex characters are accepted. Requires `parse_ha_log_level: true`.
+
+### `strip_ansi_colors`
+
+Removes ANSI terminal color escape sequences (for example `\x1b[32m`) from log messages before shipping.
+
+Default: `true`.
+
+HA Core, Supervisor, and many add-ons colorize their output; the raw escape codes pollute full-text search and rendering in the log backend. Disable only if you want byte-identical original messages.
 
 ### `journal_max_age`
 

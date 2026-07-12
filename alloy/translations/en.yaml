@@ -32,9 +32,15 @@ configuration:
   parse_ha_log_level:
     name: Parse Home Assistant log levels
     description: Extracts the leading severity from Core and Supervisor log records.
+  parse_python_log_containers:
+    name: Additional Python-log containers
+    description: Optional container-name regex (for example addon_5c53de3b_esphome|addon_core_matter_server) also parsed for leading Python-style severities. Requires parse_ha_log_level.
   parse_app_log_level:
     name: Parse embedded app log levels
     description: Extracts severities such as level=info from application messages.
+  strip_ansi_colors:
+    name: Strip ANSI color codes
+    description: Removes terminal color escape sequences from log messages before shipping.
   journal_max_age:
     name: Initial journal lookback
     description: Oldest journal entries read on startup, expressed as an Alloy duration such as 7h or 24h.

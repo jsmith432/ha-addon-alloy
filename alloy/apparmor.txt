@@ -6,6 +6,10 @@ profile alloy flags=(attach_disconnected,mediate_deleted) {
   file,
   signal (send) set=(kill,term,int,hup,cont),
 
+  # nginx master calls initgroups()/setuid() when spawning workers.
+  capability setgid,
+  capability setuid,
+
   # S6 Overlay and initialization.
   /init ix,
   /bin/** ix,

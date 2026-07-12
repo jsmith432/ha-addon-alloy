@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0 - 2026-07-11
+
+### Added
+- `strip_ansi_colors` option (default `true`): removes ANSI terminal color escape sequences from log messages before shipping, improving search and display in the log backend.
+- `parse_python_log_containers` option: extends the `parse_ha_log_level` parser to additional containers that log Python-style leading severities (for example ESPHome or Matter Server). Takes a container-name regex fragment such as `addon_5c53de3b_esphome|addon_core_matter_server`.
+- The Python-log parser now recognizes `WARN` (normalized to `warning`) and tolerates ANSI color codes between the timestamp and the severity, covering Matter Server's log format.
+
+### Changed
+- Replaced the deprecated `build.yaml` with a multi-platform `FROM` default (`ghcr.io/home-assistant/base-debian:bookworm`) directly in the Dockerfile, per the Supervisor BuildKit migration.
+
+### Fixed
+- AppArmor profile now grants `setgid`/`setuid` so the nginx ingress proxy no longer logs an `initgroups` error at startup.
+
 ## 1.2.5 - 2026-07-11
 
 ### Fixed

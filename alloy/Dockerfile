@@ -1,4 +1,5 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/base:3.23
+# Multi-platform base image (amd64 + arm64); replaces the deprecated build.yaml
+ARG BUILD_FROM=ghcr.io/home-assistant/base-debian:bookworm
 
 FROM alpine:3.23 AS alloy-downloader
 

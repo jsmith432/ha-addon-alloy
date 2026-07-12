@@ -35,6 +35,8 @@ AUTH_TYPE=$(jq -r '.auth_type // "basic"' "${OPTIONS_FILE}")
 JOURNAL_PRIORITY_AS_LEVEL=$(jq -r '.journal_priority_as_level | if . == null then true else . end' "${OPTIONS_FILE}")
 PARSE_HA_LOG_LEVEL=$(jq -r '.parse_ha_log_level // false' "${OPTIONS_FILE}")
 PARSE_APP_LOG_LEVEL=$(jq -r '.parse_app_log_level | if . == null then true else . end' "${OPTIONS_FILE}")
+STRIP_ANSI_COLORS=$(jq -r '.strip_ansi_colors | if . == null then true else . end' "${OPTIONS_FILE}")
+PARSE_PYTHON_LOG_CONTAINERS=$(jq -r '.parse_python_log_containers // ""' "${OPTIONS_FILE}" | trim)
 JOURNAL_MAX_AGE=$(jq -r '.journal_max_age // "7h"' "${OPTIONS_FILE}" | trim)
 ADDITIONAL_CONFIG=$(jq -r '.additional_config // ""' "${OPTIONS_FILE}")
 
@@ -45,6 +47,14 @@ fi
 
 if [[ -z "${JOURNAL_MAX_AGE}" ]]; then
     echo "journal_max_age must not be empty" >&2
+    exit 65
+fi
+
+# The value is spliced into a quoted Alloy selector string, so restrict it to
+# regex characters that cannot terminate the string or escape out of it.
+if [[ -n "${PARSE_PYTHON_LOG_CONTAINERS}" ]] \
+    && ! printf '%s' "${PARSE_PYTHON_LOG_CONTAINERS}" | grep -Eq '^[][A-Za-z0-9_.|*+?(){}^$-]+$'; then
+    echo "parse_python_log_containers may only contain letters, digits, and the regex characters _ . - | * + ? ( ) [ ] { } ^ \$" >&2
     exit 65
 fi
 
@@ -134,19 +144,34 @@ if [[ "${JOURNAL_PRIORITY_AS_LEVEL}" == "true" ]]; then
   }'
 fi
 
+ANSI_STRIP_STAGE=''
+if [[ "${STRIP_ANSI_COLORS}" == "true" ]]; then
+    ANSI_STRIP_STAGE='
+  stage.replace {
+    expression = "(\\x1b\\[[0-9;]*m)"
+    replace    = ""
+  }
+'
+fi
+
+PYTHON_LOG_SELECTOR='homeassistant|hassio_supervisor'
+if [[ -n "${PARSE_PYTHON_LOG_CONTAINERS}" ]]; then
+    PYTHON_LOG_SELECTOR="${PYTHON_LOG_SELECTOR}|${PARSE_PYTHON_LOG_CONTAINERS}"
+fi
+
 HA_LEVEL_STAGES=''
 if [[ "${PARSE_HA_LOG_LEVEL}" == "true" ]]; then
     HA_LEVEL_STAGES='
   stage.match {
-    selector = "{container_name=~\"homeassistant|hassio_supervisor\"}"
+    selector = "{container_name=~\"'"${PYTHON_LOG_SELECTOR}"'\"}"
 
     stage.regex {
-      expression = "^(?:\\x1b\\[[0-9;]*m)*(?:\\[[^]]+\\]|[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][^ ]+)\\s+(?P<ha_level>DEBUG|INFO|WARNING|ERROR|CRITICAL)\\s"
+      expression = "^(?:\\x1b\\[[0-9;]*m)*(?:\\[[^]]+\\]|[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][^ ]+)\\s+(?:\\x1b\\[[0-9;]*m)*(?P<ha_level>DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL)\\s"
     }
 
     stage.template {
       source   = "level"
-      template = "{{ ToLower .ha_level }}"
+      template = "{{ if eq .ha_level \"WARN\" }}warning{{ else }}{{ ToLower .ha_level }}{{ end }}"
     }
 
     stage.labels {
@@ -237,6 +262,7 @@ loki.process "journal" {
   stage.drop {
     expression = "^\\\\s*$"
   }
+${ANSI_STRIP_STAGE}
 ${HA_LEVEL_STAGES}
 ${APP_LEVEL_STAGES}
   forward_to = [loki.write.loki.receiver]
