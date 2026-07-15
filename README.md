@@ -146,7 +146,7 @@ parse_ha_log_level: true
 parse_python_log_containers: "addon_5c53de3b_esphome|addon_core_matter_server"
 ```
 
-This fixes add-ons such as ESPHome (which uses the same colorlog format as HA Core) and Matter Server shipping routine `INFO`/`WARN` records as `level=error` because they write to stderr. Only letters, digits, and basic regex characters are accepted. Requires `parse_ha_log_level: true`.
+This fixes add-ons such as ESPHome (which uses the same colorlog format as HA Core) and Matter Server shipping routine `INFO`/`WARN` records as `level=error` because they write to stderr. Only letters, digits, and basic regex characters are accepted. Extends both the `parse_ha_log_level` parser and the `multiline_python_logs` joiner.
 
 ### `strip_ansi_colors`
 
@@ -155,6 +155,16 @@ Removes ANSI terminal color escape sequences (for example `\x1b[32m`) from log m
 Default: `true`.
 
 HA Core, Supervisor, and many add-ons colorize their output; the raw escape codes pollute full-text search and rendering in the log backend. Disable only if you want byte-identical original messages.
+
+### `multiline_python_logs`
+
+Re-joins multi-line Python log records (tracebacks) into a single record before shipping.
+
+Default: `true`.
+
+Journald stores one entry per stderr line, so a Python traceback from HA Core otherwise arrives as dozens of separate fragment records. A new record starts at the leading timestamp that every real log line carries; continuation lines are appended to the previous record, with a 3-second flush timeout and a 256-line cap.
+
+Applies to the same containers as `parse_ha_log_level` (`homeassistant`, `hassio_supervisor`, plus any `parse_python_log_containers` extension), but works independently of that toggle.
 
 ### `journal_max_age`
 

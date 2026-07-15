@@ -72,8 +72,13 @@ assert_not_contains "${TMP_DIR}/plain.log" '10.0.0.20'
 ha_line=$(grep -n -m1 '(?P<ha_level>' "${TMP_DIR}/plain.alloy" | cut -d: -f1)
 app_line=$(grep -n -m1 '(?P<app_level>' "${TMP_DIR}/plain.alloy" | cut -d: -f1)
 strip_line=$(grep -n -m1 'stage.replace' "${TMP_DIR}/plain.alloy" | cut -d: -f1)
+multiline_line=$(grep -n -m1 'stage.multiline' "${TMP_DIR}/plain.alloy" | cut -d: -f1)
 ((ha_line < app_line)) || fail "generic app parsing must run after HA parsing"
 ((strip_line < ha_line)) || fail "ANSI stripping must run before HA parsing"
+((strip_line < multiline_line)) || fail "ANSI stripping must run before multiline joining"
+((multiline_line < ha_line)) || fail "multiline joining must run before HA parsing"
+assert_contains "${TMP_DIR}/plain.alloy" 'firstline     = "^(?:\\x1b\\[[0-9;]*m)*(?:\\[[^]]+\\]|[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2})"'
+assert_contains "${TMP_DIR}/plain.alloy" 'max_wait_time = "3s"'
 assert_contains "${TMP_DIR}/plain.alloy" 'expression = "(\\x1b\\[[0-9;]*m)"'
 assert_contains "${TMP_DIR}/plain.alloy" 'expression = "^(?:\\x1b\\[[0-9;]*m)*(?:\\[[^]]+\\]|[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][^ ]+)\\s+'
 assert_contains "${TMP_DIR}/plain.alloy" '(?P<ha_level>DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL)'
@@ -118,6 +123,16 @@ JSON
 render_case no-strip
 assert_not_contains "${TMP_DIR}/no-strip.alloy" 'stage.replace'
 
+cat >"${TMP_DIR}/no-multiline.json" <<'JSON'
+{
+  "loki_url": "http://loki.local:3100/loki/api/v1/push",
+  "advanced_auth": false,
+  "multiline_python_logs": false
+}
+JSON
+render_case no-multiline
+assert_not_contains "${TMP_DIR}/no-multiline.alloy" 'stage.multiline'
+
 cat >"${TMP_DIR}/python-extra.json" <<'JSON'
 {
   "loki_url": "http://loki.local:3100/loki/api/v1/push",
@@ -128,6 +143,9 @@ cat >"${TMP_DIR}/python-extra.json" <<'JSON'
 JSON
 render_case python-extra
 assert_contains "${TMP_DIR}/python-extra.alloy" 'selector = "{container_name=~\"homeassistant|hassio_supervisor|addon_5c53de3b_esphome|addon_core_matter_server\"}"'
+# The extended selector must apply to both the multiline stage and the HA parser
+[[ $(grep -Fc 'selector = "{container_name=~\"homeassistant|hassio_supervisor|addon_5c53de3b_esphome|addon_core_matter_server\"}"' "${TMP_DIR}/python-extra.alloy") == 2 ]] \
+    || fail "extended python selector must appear in both the multiline and HA parsing stages"
 
 cat >"${TMP_DIR}/python-invalid.json" <<'JSON'
 {

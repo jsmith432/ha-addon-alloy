@@ -217,7 +217,7 @@ Why this exists:
 
 Notes:
 
-- Requires `parse_ha_log_level: true`; ignored otherwise.
+- Extends both the `parse_ha_log_level` parser and the `multiline_python_logs` joiner; it has no effect if both of those are disabled.
 - Only letters, digits, and the regex characters `_ . - | * + ? ( ) [ ] { } ^ $` are accepted. Anything else fails validation before Alloy starts.
 
 #### `strip_ansi_colors`
@@ -237,6 +237,35 @@ Why this exists:
 Recommended setting:
 
 - Keep enabled. Disable only if you need byte-identical original messages.
+
+#### `multiline_python_logs`
+
+Re-joins multi-line Python log records — most importantly tracebacks — into a single record before shipping.
+
+Default:
+
+```yaml
+multiline_python_logs: true
+```
+
+Why this exists:
+
+- Docker's journald logging driver stores one journal entry per stderr line, so a Python traceback from HA Core arrives in the log backend as dozens of separate fragment records with no context.
+- This stage buffers lines per container stream: a new record starts at the leading timestamp (or bracket prefix) that every real Python-style log line carries; lines without one (traceback frames, continuation lines) are appended to the previous record.
+
+Scope:
+
+- Applies to `homeassistant` and `hassio_supervisor` container logs, plus any containers added via `parse_python_log_containers` — the same selector as `parse_ha_log_level`, but it works independently of that toggle.
+
+Behavior details:
+
+- A partial record is flushed after 3 seconds of no continuation, and records are capped at 256 lines.
+- The joined record carries the timestamp and (with `parse_ha_log_level`) the severity of its first line, so a whole traceback ships as one `level=error` record.
+- Buffering adds up to 3 seconds of delivery latency to the last record in a burst from these containers.
+
+Recommended setting:
+
+- Keep enabled. Disable only if you need strict one-journal-entry-per-record shipping.
 
 #### `journal_max_age`
 

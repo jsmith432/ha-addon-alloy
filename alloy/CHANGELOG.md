@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0 - 2026-07-14
+
+### Added
+- `multiline_python_logs` option (default `true`): re-joins multi-line Python log records (tracebacks) that journald stores as one entry per line, so they arrive in the log backend as a single record instead of dozens of fragments. Applies to the same containers as `parse_ha_log_level` (`homeassistant`, `hassio_supervisor`, plus any `parse_python_log_containers` extension). A new record starts at the leading timestamp or bracket prefix; continuation lines are appended, with a 3-second flush and a 256-line cap per record.
+
 ## 1.3.0 - 2026-07-11
 
 ### Added
