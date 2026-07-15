@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1 - 2026-07-14
+
+### Added
+- Add-on icon and logo (official Grafana Alloy artwork) shown in the Home Assistant add-on store and info page.
+
 ## 1.4.0 - 2026-07-14
 
 ### Added
