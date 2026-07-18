@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0 - 2026-07-18
+
+### Added
+- `drop_message_regex` option (optional, default unset): RE2 regex dropping matching journal messages before they are shipped. Runs after ANSI stripping and before multiline joining and level parsing. Useful for high-volume journal noise such as bluetoothd BLE discovery messages or kernel audit records.
+
 ## 1.4.1 - 2026-07-14
 
 ### Added

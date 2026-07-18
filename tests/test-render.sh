@@ -133,6 +133,38 @@ JSON
 render_case no-multiline
 assert_not_contains "${TMP_DIR}/no-multiline.alloy" 'stage.multiline'
 
+# drop_message_regex is absent by default: only the blank-line drop exists
+[[ $(grep -Fc 'stage.drop' "${TMP_DIR}/plain.alloy") == 1 ]] \
+    || fail "default config must contain exactly one stage.drop (blank-line filter)"
+
+cat >"${TMP_DIR}/drop-regex.json" <<'JSON'
+{
+  "loki_url": "http://loki.local:3100/loki/api/v1/push",
+  "advanced_auth": false,
+  "drop_message_regex": "Unable to (create object|register device interface) |proctitle=2F63726F"
+}
+JSON
+render_case drop-regex
+assert_contains "${TMP_DIR}/drop-regex.alloy" 'expression = "Unable to (create object|register device interface) |proctitle=2F63726F"'
+[[ $(grep -Fc 'stage.drop' "${TMP_DIR}/drop-regex.alloy") == 2 ]] \
+    || fail "drop_message_regex must add a second stage.drop"
+drop_line=$(grep -n 'proctitle=2F63726F' "${TMP_DIR}/drop-regex.alloy" | cut -d: -f1)
+strip_line=$(grep -n -m1 'stage.replace' "${TMP_DIR}/drop-regex.alloy" | cut -d: -f1)
+multiline_line=$(grep -n -m1 'stage.multiline' "${TMP_DIR}/drop-regex.alloy" | cut -d: -f1)
+((strip_line < drop_line)) || fail "user drop must run after ANSI stripping"
+((drop_line < multiline_line)) || fail "user drop must run before multiline joining"
+
+# Quotes and backslashes in the regex must be escaped, not break the config
+cat >"${TMP_DIR}/drop-escape.json" <<'JSON'
+{
+  "loki_url": "http://loki.local:3100/loki/api/v1/push",
+  "advanced_auth": false,
+  "drop_message_regex": "said \"hi\" \\d+ times$"
+}
+JSON
+render_case drop-escape
+assert_contains "${TMP_DIR}/drop-escape.alloy" 'expression = "said \"hi\" \\d+ times$"'
+
 cat >"${TMP_DIR}/python-extra.json" <<'JSON'
 {
   "loki_url": "http://loki.local:3100/loki/api/v1/push",

@@ -267,6 +267,26 @@ Recommended setting:
 
 - Keep enabled. Disable only if you need strict one-journal-entry-per-record shipping.
 
+#### `drop_message_regex`
+
+Optional [RE2](https://github.com/google/re2/wiki/Syntax) regular expression. Journal messages matching it are dropped before shipping.
+
+Default: unset (nothing is dropped).
+
+Example — silence bluetoothd BLE discovery spam and kernel audit records:
+
+```yaml
+drop_message_regex: "Unable to (create object for found device|register device interface for) |proctitle=2F63726F"
+```
+
+Behavior details:
+
+- Matched against the message after ANSI stripping (when enabled) and before multiline joining and level parsing.
+- A partial match anywhere in the message drops the record; anchor with `^`/`$` for whole-line matching.
+- Combine multiple patterns with `|`.
+- Dropped records never reach the log backend — prefer tight patterns over broad ones, since there is no way to recover a dropped record later.
+- An invalid regex prevents Alloy from starting; the app validates the generated configuration at startup and logs the error.
+
 #### `journal_max_age`
 
 Controls the oldest journal entries Alloy reads when it has no saved position.

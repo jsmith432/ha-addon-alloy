@@ -1,5 +1,5 @@
 name: Grafana Alloy
-version: "1.4.1"
+version: "1.5.0"
 slug: alloy
 description: >-
   Ship Home Assistant logs to Loki using Grafana Alloy.
@@ -42,5 +42,6 @@ schema:
   parse_app_log_level: "bool?"
   strip_ansi_colors: "bool?"
   multiline_python_logs: "bool?"
+  drop_message_regex: "str?"
   journal_max_age: "str?"
   additional_config: "str?"

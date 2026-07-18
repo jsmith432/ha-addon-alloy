@@ -44,6 +44,9 @@ configuration:
   multiline_python_logs:
     name: Join multiline Python logs
     description: Re-joins Python tracebacks from Home Assistant Core, Supervisor, and additional Python-log containers into single records.
+  drop_message_regex:
+    name: Drop messages matching regex
+    description: Optional RE2 regex; journal messages matching it are dropped before shipping (for example bluetoothd BLE discovery spam or kernel audit records).
   journal_max_age:
     name: Initial journal lookback
     description: Oldest journal entries read on startup, expressed as an Alloy duration such as 7h or 24h.

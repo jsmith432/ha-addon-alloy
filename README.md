@@ -166,6 +166,20 @@ Journald stores one entry per stderr line, so a Python traceback from HA Core ot
 
 Applies to the same containers as `parse_ha_log_level` (`homeassistant`, `hassio_supervisor`, plus any `parse_python_log_containers` extension), but works independently of that toggle.
 
+### `drop_message_regex`
+
+Optional [RE2](https://github.com/google/re2/wiki/Syntax) regular expression. Journal messages matching it are dropped before shipping — they never reach the log backend.
+
+Default: unset (nothing is dropped).
+
+Use this to silence high-volume noise at the source, for example bluetoothd BLE discovery spam and kernel audit records:
+
+```yaml
+drop_message_regex: "Unable to (create object for found device|register device interface for) |proctitle=2F63726F"
+```
+
+The regex is matched against the message after ANSI stripping and before multiline joining and level parsing. A partial match anywhere in the message drops the record; anchor with `^`/`$` for whole-line matching. Combine multiple patterns with `|`. Dropped records are gone permanently — prefer patterns tight enough that they cannot match anything you might later need.
+
 ### `journal_max_age`
 
 Controls how far Alloy looks back in the journal when it has no saved position. Use an Alloy duration such as `7h` or `24h`.

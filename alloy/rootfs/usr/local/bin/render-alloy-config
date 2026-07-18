@@ -39,6 +39,7 @@ STRIP_ANSI_COLORS=$(jq -r '.strip_ansi_colors | if . == null then true else . en
 MULTILINE_PYTHON_LOGS=$(jq -r '.multiline_python_logs | if . == null then true else . end' "${OPTIONS_FILE}")
 PARSE_PYTHON_LOG_CONTAINERS=$(jq -r '.parse_python_log_containers // ""' "${OPTIONS_FILE}" | trim)
 JOURNAL_MAX_AGE=$(jq -r '.journal_max_age // "7h"' "${OPTIONS_FILE}" | trim)
+DROP_MESSAGE_REGEX=$(jq -r '.drop_message_regex // ""' "${OPTIONS_FILE}" | trim)
 ADDITIONAL_CONFIG=$(jq -r '.additional_config // ""' "${OPTIONS_FILE}")
 
 if [[ -z "${LOKI_URL}" ]]; then
@@ -153,6 +154,16 @@ if [[ "${STRIP_ANSI_COLORS}" == "true" ]]; then
     replace    = ""
   }
 '
+fi
+
+# User-supplied drop filter. Runs after ANSI stripping (so the regex sees clean
+# text) and before multiline joining and level parsing (no point processing
+# records that are about to be discarded).
+DROP_MESSAGE_STAGE=''
+if [[ -n "${DROP_MESSAGE_REGEX}" ]]; then
+    DROP_MESSAGE_REGEX_LITERAL=$(alloy_quote "${DROP_MESSAGE_REGEX}")
+    printf -v DROP_MESSAGE_STAGE '\n  stage.drop {\n    expression = %s\n  }\n' \
+        "${DROP_MESSAGE_REGEX_LITERAL}"
 fi
 
 PYTHON_LOG_SELECTOR='homeassistant|hassio_supervisor'
@@ -283,6 +294,7 @@ loki.process "journal" {
     expression = "^\\\\s*$"
   }
 ${ANSI_STRIP_STAGE}
+${DROP_MESSAGE_STAGE}
 ${MULTILINE_STAGES}
 ${HA_LEVEL_STAGES}
 ${APP_LEVEL_STAGES}
