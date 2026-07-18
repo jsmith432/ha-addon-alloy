@@ -297,7 +297,12 @@ Default:
 journal_max_age: 7h
 ```
 
-Use an Alloy duration such as `7h` or `24h`. A larger value can replay more historical records on first start and may cause the remote Loki endpoint to reject entries that are older than its ingestion window.
+Use a **positive** Alloy duration such as `7h` or `24h`. A larger value can replay more historical records on first start and may cause the remote Loki endpoint to reject entries that are older than its ingestion window.
+
+Warning — this value also limits how old a saved journal position may be:
+
+- Alloy discards the saved position when the entry it points at is older than `journal_max_age`, and falls back to time-based seeking. Do not set it shorter than the longest add-on downtime you expect, or a long outage will replay `journal_max_age` of history instead of resuming precisely.
+- Zero or negative values are rejected at startup. With `0h`, every saved position would be "too old", and the zero fallback reads the journal **from the beginning** — every restart would re-ship the entire journal retention as duplicates.
 
 The journal position is stored in the add-on's persistent `/data` and survives restarts, rebuilds, and updates. Uninstalling and reinstalling the add-on wipes `/data`, so the next start re-ships the last `journal_max_age` of entries — these arrive as duplicate records in the destination.
 

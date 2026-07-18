@@ -52,6 +52,15 @@ if [[ -z "${JOURNAL_MAX_AGE}" ]]; then
     exit 65
 fi
 
+# max_age doubles as the saved-cursor staleness limit: a zero (or negative)
+# duration makes Alloy discard the journal position on every start and fall
+# back to Since=0, which reads the journal from the beginning — every restart
+# then re-ships the entire journal retention as duplicates.
+if printf '%s' "${JOURNAL_MAX_AGE}" | grep -Eq '^-|^(0+[a-z]+)+$|^0+$'; then
+    echo "journal_max_age must be a positive duration such as 7h or 24h; zero or negative values disable journal position tracking and force a full-journal replay on every restart" >&2
+    exit 65
+fi
+
 # The value is spliced into a quoted Alloy selector string, so restrict it to
 # regex characters that cannot terminate the string or escape out of it.
 if [[ -n "${PARSE_PYTHON_LOG_CONTAINERS}" ]] \

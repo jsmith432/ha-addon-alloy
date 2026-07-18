@@ -182,7 +182,7 @@ The regex is matched against the message after ANSI stripping and before multili
 
 ### `journal_max_age`
 
-Controls how far Alloy looks back in the journal when it has no saved position. Use an Alloy duration such as `7h` or `24h`.
+Controls how far Alloy looks back in the journal when it has no saved position. Use a **positive** Alloy duration such as `7h` or `24h` — zero or negative values are rejected at startup, because `max_age` also caps how old a saved position may be before it is discarded (with `0h` every restart would replay the entire journal retention as duplicates).
 
 Default: `7h`.
 

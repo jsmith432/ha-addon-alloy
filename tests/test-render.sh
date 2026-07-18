@@ -277,6 +277,29 @@ if "${RENDERER}" "${TMP_DIR}/missing-bearer.json" "${TMP_DIR}/missing-bearer.all
 fi
 assert_contains "${TMP_DIR}/missing-bearer.log" 'requires bearer_token'
 
+for bad_age in "0h" "0" "0h0m" "-5h"; do
+    jq -n --arg age "${bad_age}" '{
+      loki_url: "http://loki.local:3100/loki/api/v1/push",
+      advanced_auth: false,
+      journal_max_age: $age
+    }' >"${TMP_DIR}/bad-age.json"
+    if "${RENDERER}" "${TMP_DIR}/bad-age.json" "${TMP_DIR}/bad-age.alloy" /var/log/journal >"${TMP_DIR}/bad-age.log" 2>&1; then
+        fail "journal_max_age '${bad_age}' was accepted"
+    fi
+    assert_contains "${TMP_DIR}/bad-age.log" 'journal_max_age must be a positive duration'
+done
+
+# Fractional durations with a leading zero are valid and must not be rejected
+cat >"${TMP_DIR}/frac-age.json" <<'JSON'
+{
+  "loki_url": "http://loki.local:3100/loki/api/v1/push",
+  "advanced_auth": false,
+  "journal_max_age": "0.5h"
+}
+JSON
+render_case frac-age
+assert_contains "${TMP_DIR}/frac-age.alloy" 'max_age       = "0.5h"'
+
 cat >"${TMP_DIR}/missing-url.json" <<'JSON'
 {
   "advanced_auth": false

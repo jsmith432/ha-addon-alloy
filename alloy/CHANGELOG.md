@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1 - 2026-07-18
+
+### Fixed
+- Reject zero or negative `journal_max_age` values at startup with a clear error. `max_age` also acts as the saved-cursor staleness limit in Alloy's journal source: with `0h`, the saved position is discarded as "too old" on every start and the fallback (`Since = 0`) reads the journal from the beginning — so every restart re-shipped the entire journal retention as duplicate records.
+
 ## 1.5.0 - 2026-07-18
 
 ### Added
